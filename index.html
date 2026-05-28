@@ -450,6 +450,7 @@ function renderSidebar(){
         <div class="job-item-sub">${items.length} items</div>
       </div>
       <span class="job-item-pct">${pct}%</span>
+      <button onclick="event.stopPropagation();openManageJob('${esc(job.id)}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0" title="Manage job">⋯</button>
     </div>`;
   }).join('');
 }
@@ -1087,7 +1088,213 @@ async function createJob(){
   setBtnLoading('save-btn',false,'Create job');
 }
 
-// ─── Utilities ────────────────────────────────────────────────────────────────
+// ─── Manage job modal (delete job / add items) ────────────────────────────────
+function openManageJob(jobId){
+  const job=jobs.find(j=>j.id===jobId);
+  if(!job)return;
+  activeModal={type:'managejob',jobId};
+  document.getElementById('modal-title').textContent='Manage — '+job.name;
+  const items=jobItems[jobId]||[];
+  document.getElementById('modal-body').innerHTML=`
+    <div style="margin-bottom:1rem">
+      <div class="sec-label">Job info</div>
+      <div style="font-size:13px;color:var(--text2)">${items.length} line items &nbsp;·&nbsp; ${releases.filter(r=>r.job_id===jobId).length} releases logged</div>
+    </div>
+
+    <div style="margin-bottom:1rem">
+      <div class="sec-label">Add items to this job</div>
+      <div style="display:flex;gap:6px;margin-bottom:7px">
+        <button class="btn btn-blue" id="add-tab-file" onclick="setAddTab('file')" style="font-size:11px;height:26px">📎 Upload file / photo</button>
+        <button class="btn" id="add-tab-paste" onclick="setAddTab('paste')" style="font-size:11px;height:26px">✏️ Paste text</button>
+        <button class="btn" id="add-tab-manual" onclick="setAddTab('manual')" style="font-size:11px;height:26px">+ Manual entry</button>
+      </div>
+
+      <div id="add-file-section">
+        <div class="drop-zone" id="add-drop-zone" onclick="document.getElementById('add-file-input').click()"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleAddFileDrop(event)">
+          <input type="file" id="add-file-input" accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp" onchange="handleAddFileSelect(this.files[0])">
+          <div class="drop-zone-icon">📂</div>
+          <div class="drop-zone-title">Drop file here or click to browse</div>
+          <div class="drop-zone-sub">PDF, Excel, CSV, or a photo of your BOM</div>
+        </div>
+        <div id="add-ai-status" style="display:none"></div>
+      </div>
+
+      <div id="add-paste-section" style="display:none">
+        <textarea class="bom-textarea" id="add-bom-text" placeholder="Paste items here. Each line: Item, Category, Qty" oninput="parseAddPaste()"></textarea>
+      </div>
+
+      <div id="add-manual-section" style="display:none">
+        <div class="form-grid">
+          <div class="form-row"><label>Item description</label><input type="text" id="manual-name" placeholder='e.g. 3/4" EMT Conduit'></div>
+          <div class="form-row"><label>Category</label><input type="text" id="manual-cat" placeholder="e.g. EMT Conduits"></div>
+        </div>
+        <div class="form-row" style="max-width:120px"><label>Qty</label><input type="number" id="manual-qty" placeholder="e.g. 500" min="1"></div>
+        <button class="btn btn-blue" style="margin-top:.3rem" onclick="addManualItem()">+ Add item</button>
+      </div>
+
+      <div id="add-preview-section" style="display:none;margin-top:.6rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
+          <span class="sec-label" style="margin:0" id="add-preview-count"></span>
+        </div>
+        <div class="preview-table-wrap">
+          <table class="preview-table">
+            <thead><tr><th style="width:45%">Item description</th><th style="width:30%">Category</th><th style="width:15%">Qty</th><th style="width:10%"></th></tr></thead>
+            <tbody id="add-preview-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:.9rem;margin-top:.5rem">
+      <div class="sec-label" style="color:var(--red)">Danger zone</div>
+      <button class="btn btn-red" style="font-size:12px" onclick="confirmDeleteJob('${esc(jobId)}')">🗑 Delete this job and all its data</button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Close</button>
+      <button class="btn btn-blue" id="add-items-btn" onclick="saveNewItems('${esc(jobId)}')" style="display:none">+ Add items to job</button>
+    </div>`;
+  setAddTab('file');
+  document.getElementById('overlay').classList.add('open');
+}
+
+let addBomItems=[];
+
+function setAddTab(tab){
+  ['file','paste','manual'].forEach(t=>{
+    document.getElementById('add-'+t+'-section').style.display=t===tab?'block':'none';
+    const btn=document.getElementById('add-tab-'+t);
+    if(btn)btn.className='btn'+(t===tab?' btn-blue':'');
+  });
+  if(tab==='manual'){addBomItems=[];renderAddPreview();}
+}
+
+function handleAddFileDrop(e){
+  e.preventDefault();
+  document.getElementById('add-drop-zone').classList.remove('drag-over');
+  const file=e.dataTransfer.files[0];
+  if(file)handleAddFileSelect(file);
+}
+
+async function handleAddFileSelect(file){
+  if(!file)return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  const dz=document.getElementById('add-drop-zone');
+  dz.innerHTML=`<div class="file-chip"><span class="spinner"></span> ${esc(file.name)}</div>`;
+  try{
+    if(['xlsx','xls'].includes(ext)){
+      const buf=await file.arrayBuffer();
+      const wb=XLSX.read(buf,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      addBomItems=extractItemsFromRows(rows);
+      dz.innerHTML=`<div class="file-chip">📄 ${esc(file.name)} <span style="opacity:.6;cursor:pointer" onclick="document.getElementById('add-drop-zone').innerHTML='<div class=drop-zone-icon>📂</div><div class=drop-zone-title>Drop file here or click to browse</div>';addBomItems=[];renderAddPreview()">✕</span></div>`;
+    } else if(ext==='csv'){
+      const text=await file.text();
+      const rows=text.split('\n').map(r=>r.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+      addBomItems=extractItemsFromRows(rows);
+      dz.innerHTML=`<div class="file-chip">📄 ${esc(file.name)}</div>`;
+    } else if(['png','jpg','jpeg','webp','pdf'].includes(ext)){
+      // Use Claude
+      const statusEl=document.getElementById('add-ai-status');
+      statusEl.style.display='block';
+      statusEl.innerHTML='<div class="ai-status"><span class="spinner"></span> Reading with AI...</div>';
+      const base64=await fileToBase64(file);
+      const isPdf=ext==='pdf';
+      const mediaType=isPdf?'application/pdf':({png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp'}[ext]||'image/jpeg');
+      const contentBlock=isPdf?{type:'document',source:{type:'base64',media_type:mediaType,data:base64}}:{type:'image',source:{type:'base64',media_type:mediaType,data:base64}};
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,messages:[{role:'user',content:[contentBlock,{type:'text',text:'Extract ALL line items from this BOM. Respond ONLY with a JSON array: [{"name":"...","category":"...","qty":0}]. No markdown.'}]}]})});
+      const data=await resp.json();
+      const text=data.content?.find(b=>b.type==='text')?.text||'';
+      addBomItems=JSON.parse(text.replace(/```json|```/g,'').trim());
+      statusEl.innerHTML=`<div class="ai-status" style="background:var(--green-bg);border-color:var(--green-border);color:var(--green)">✓ AI found ${addBomItems.length} items</div>`;
+      dz.innerHTML=`<div class="file-chip">📄 ${esc(file.name)}</div>`;
+    }
+    renderAddPreview();
+  }catch(e){alert('Failed to parse: '+e);}
+}
+
+function parseAddPaste(){
+  addBomItems=parseBomText(document.getElementById('add-bom-text').value);
+  renderAddPreview();
+}
+
+function addManualItem(){
+  const name=(document.getElementById('manual-name')||{}).value||'';
+  const cat=(document.getElementById('manual-cat')||{}).value||'General';
+  const qty=parseInt((document.getElementById('manual-qty')||{}).value)||0;
+  if(!name.trim()||qty<=0){alert('Enter item name and quantity.');return;}
+  addBomItems.push({name:name.trim(),category:cat.trim()||inferCategory(name),qty});
+  document.getElementById('manual-name').value='';
+  document.getElementById('manual-qty').value='';
+  document.getElementById('manual-name').focus();
+  renderAddPreview();
+}
+
+function renderAddPreview(){
+  const section=document.getElementById('add-preview-section');
+  const addBtn=document.getElementById('add-items-btn');
+  if(!addBomItems.length){if(section)section.style.display='none';if(addBtn)addBtn.style.display='none';return;}
+  if(section)section.style.display='block';
+  if(addBtn)addBtn.style.display='inline-flex';
+  document.getElementById('add-preview-count').textContent=addBomItems.length+' items to add';
+  document.getElementById('add-preview-tbody').innerHTML=addBomItems.map((item,i)=>`
+    <tr>
+      <td><input value="${esc(item.name)}" oninput="addBomItems[${i}].name=this.value"></td>
+      <td><input value="${esc(item.category)}" oninput="addBomItems[${i}].category=this.value"></td>
+      <td><input type="number" value="${item.qty}" oninput="addBomItems[${i}].qty=parseInt(this.value)||0" style="width:70px"></td>
+      <td><button onclick="addBomItems.splice(${i},1);renderAddPreview()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 4px">✕</button></td>
+    </tr>`).join('');
+}
+
+async function saveNewItems(jobId){
+  const valid=addBomItems.filter(i=>i.name&&i.qty>0);
+  if(!valid.length){alert('No valid items to add.');return;}
+  setBtnLoading('add-items-btn',true,'Saving...');
+  try{
+    const rows=valid.map(i=>({job_id:jobId,item_name:i.name,category:i.category||inferCategory(i.name),total_qty:parseInt(i.qty)||0}));
+    for(let i=0;i<rows.length;i+=50) await sbPost('job_items',rows.slice(i,i+50));
+    // Refresh job items
+    const allItems=await sbGet('job_items','order=created_at.asc&limit=10000');
+    jobItems={};
+    for(const item of allItems){if(!jobItems[item.job_id])jobItems[item.job_id]=[];jobItems[item.job_id].push(item);}
+    closeModal();
+    if(jobId===currentJobId){populateCatFilters();refreshAll();}
+    renderSidebar();
+    toast(`✓ ${valid.length} items added to job`);
+  }catch(e){alert('Failed to save items: '+e);}
+  setBtnLoading('add-items-btn',false,'+ Add items to job');
+}
+
+async function confirmDeleteJob(jobId){
+  const job=jobs.find(j=>j.id===jobId);
+  if(!confirm(`Delete "${job?job.name:'this job'}" and ALL its releases? This cannot be undone.`))return;
+  try{
+    // Delete releases, job_items, then job
+    const jobReleases=await sbGet('releases',`job_id=eq.${encodeURIComponent(jobId)}&select=id`);
+    for(const r of jobReleases) await sbDelete('releases',r.id);
+    const jobItemsList=await sbGet('job_items',`job_id=eq.${encodeURIComponent(jobId)}&select=id`);
+    for(const i of jobItemsList) await sbDelete('job_items',i.id);
+    await sbDelete('jobs',jobId);
+    jobs=jobs.filter(j=>j.id!==jobId);
+    delete jobItems[jobId];
+    if(currentJobId===jobId){
+      currentJobId=null;
+      releases=[];
+      document.getElementById('no-job-state').style.display='flex';
+      document.getElementById('job-tabs').style.display='none';
+      document.getElementById('main-nav').style.display='none';
+      document.getElementById('header-job-name').textContent='Select a job';
+      document.getElementById('export-btn').disabled=true;
+    }
+    closeModal();
+    renderSidebar();
+    toast('Job deleted');
+  }catch(e){alert('Delete failed: '+e);}
+}
 function closeModal(){document.getElementById('overlay').classList.remove('open');activeModal=null;}
 function handleOverlayClick(e){if(e.target===document.getElementById('overlay'))closeModal();}
 function setBtnLoading(id,loading,label){const b=document.getElementById(id);if(!b)return;b.disabled=loading;b.innerHTML=loading?`<span class="spinner"></span> ${label}`:label;}
