@@ -1440,21 +1440,18 @@ function exportExcel(){
 // ─── Auth & session ───────────────────────────────────────────────────────────
 let currentUser = null; // {id, username, role}
 
-// Password hashing - djb2 algorithm, reliable across all browsers
+// Password hashing - reliable across all browsers, no special chars
 function hashPassword(password) {
   const str = password + 'ule-salt-2024';
-  let hash = 5381;
+  let h1 = 5381, h2 = 52711;
   for(let i = 0; i < str.length; i++){
-    hash = ((hash << 5) + hash) + str.charCodeAt(i);
-    hash = hash & hash; // Convert to 32bit integer
+    const c = str.charCodeAt(i);
+    h1 = (Math.imul(31, h1) + c) | 0;
+    h2 = (Math.imul(31, h2) + c) | 0;
   }
-  // Second pass with different seed for longer hash
-  let hash2 = 0x811c9dc5;
-  for(let i = 0; i < str.length; i++){
-    hash2 ^= str.charCodeAt(i);
-    hash2 = (hash2 * 0x01000193) & 0xFFFFFFFF;
-  }
-  return (hash >>> 0).toString(16).padStart(8,'0') + hash2.toString(16).padStart(8,'0');
+  const a = (h1 >>> 0).toString(16).padStart(8,'0');
+  const b = (h2 >>> 0).toString(16).padStart(8,'0');
+  return a + b;
 }
 
 function showLoginScreen() {
