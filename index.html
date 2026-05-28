@@ -1440,11 +1440,30 @@ function exportExcel(){
 // ─── Auth & session ───────────────────────────────────────────────────────────
 let currentUser = null; // {id, username, role}
 
-// Simple password hashing (SHA-256 via SubtleCrypto)
-async function hashPassword(password) {
-  const msgBuffer = new TextEncoder().encode(password + 'ule-salt-2024');
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  return Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
+// Password hashing - works on HTTP and HTTPS
+function hashPassword(password) {
+  // Simple but consistent hash that works without crypto.subtle
+  const str = password + 'ule-salt-2024';
+  let h1=0xdeadbeef, h2=0x41c6ce57;
+  for(let i=0;i<str.length;i++){
+    const ch=str.charCodeAt(i);
+    h1=Math.imul(h1^ch,2654435761);
+    h2=Math.imul(h2^ch,1597334677);
+  }
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  const hash1=(4294967296*(2097151&h2)+(h1>>>0)).toString(16).padStart(14,'0');
+  // Second pass for longer hash
+  let h3=0xbaddcafe, h4=0x12345678;
+  for(let i=str.length-1;i>=0;i--){
+    const ch=str.charCodeAt(i);
+    h3=Math.imul(h3^ch,2246822507);
+    h4=Math.imul(h4^ch,2654435761);
+  }
+  h3=Math.imul(h3^(h3>>>16),2246822507)^Math.imul(h4^(h4>>>13),3266489909);
+  h4=Math.imul(h4^(h4>>>16),2246822507)^Math.imul(h3^(h3>>>13),3266489909);
+  const hash2=(4294967296*(2097151&h4)+(h3>>>0)).toString(16).padStart(14,'0');
+  return hash1+hash2;
 }
 
 function showLoginScreen() {
@@ -1474,7 +1493,7 @@ async function submitLogin() {
   btn.disabled = true; btn.textContent = 'Signing in...';
   errEl.style.display = 'none';
   try {
-    const hash = await hashPassword(password);
+    const hash = hashPassword(password);
     const users = await sbGet('users', `username=eq.${encodeURIComponent(username)}&password_hash=eq.${encodeURIComponent(hash)}&select=id,username,role`);
     if (!users.length) { errEl.textContent = 'Invalid username or password.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Sign in'; return; }
     currentUser = users[0];
@@ -1499,7 +1518,7 @@ async function submitRegister() {
     // Check username not taken
     const existing = await sbGet('users', `username=eq.${encodeURIComponent(username)}&select=id`);
     if(existing.length) { errEl.textContent='Username already taken.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Create account'; return; }
-    const hash = await hashPassword(password);
+    const hash = hashPassword(password);
     const token = new URLSearchParams(window.location.search).get('invite');
     // Validate invite token
     const invites = await sbGet('invites', `token=eq.${encodeURIComponent(token)}&select=id,used_at`);
