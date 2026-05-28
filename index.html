@@ -1440,30 +1440,21 @@ function exportExcel(){
 // ─── Auth & session ───────────────────────────────────────────────────────────
 let currentUser = null; // {id, username, role}
 
-// Password hashing - works on HTTP and HTTPS
+// Password hashing - djb2 algorithm, reliable across all browsers
 function hashPassword(password) {
-  // Simple but consistent hash that works without crypto.subtle
   const str = password + 'ule-salt-2024';
-  let h1=0xdeadbeef, h2=0x41c6ce57;
-  for(let i=0;i<str.length;i++){
-    const ch=str.charCodeAt(i);
-    h1=Math.imul(h1^ch,2654435761);
-    h2=Math.imul(h2^ch,1597334677);
+  let hash = 5381;
+  for(let i = 0; i < str.length; i++){
+    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+    hash = hash & hash; // Convert to 32bit integer
   }
-  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
-  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
-  const hash1=(4294967296*(2097151&h2)+(h1>>>0)).toString(16).padStart(14,'0');
-  // Second pass for longer hash
-  let h3=0xbaddcafe, h4=0x12345678;
-  for(let i=str.length-1;i>=0;i--){
-    const ch=str.charCodeAt(i);
-    h3=Math.imul(h3^ch,2246822507);
-    h4=Math.imul(h4^ch,2654435761);
+  // Second pass with different seed for longer hash
+  let hash2 = 0x811c9dc5;
+  for(let i = 0; i < str.length; i++){
+    hash2 ^= str.charCodeAt(i);
+    hash2 = (hash2 * 0x01000193) & 0xFFFFFFFF;
   }
-  h3=Math.imul(h3^(h3>>>16),2246822507)^Math.imul(h4^(h4>>>13),3266489909);
-  h4=Math.imul(h4^(h4>>>16),2246822507)^Math.imul(h3^(h3>>>13),3266489909);
-  const hash2=(4294967296*(2097151&h4)+(h3>>>0)).toString(16).padStart(14,'0');
-  return hash1+hash2;
+  return (hash >>> 0).toString(16).padStart(8,'0') + hash2.toString(16).padStart(8,'0');
 }
 
 function showLoginScreen() {
