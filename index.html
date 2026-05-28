@@ -110,7 +110,7 @@ tbody tr:hover td{background:#f8f7f3}
 .pagination{display:flex;align-items:center;gap:7px;margin-top:.6rem;justify-content:flex-end;font-size:12px;color:var(--text2)}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center}
 .overlay.open{display:flex}
-.modal{background:var(--surface);border-radius:14px;padding:1.25rem;width:480px;max-width:94vw;max-height:88vh;overflow-y:auto;border:1px solid var(--border)}
+.modal{background:var(--surface);border-radius:14px;padding:1.25rem;width:580px;max-width:94vw;max-height:88vh;overflow-y:auto;border:1px solid var(--border)}
 .modal-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.9rem;gap:10px}
 .modal-title{font-size:14px;font-weight:600;line-height:1.3}
 .modal-close{background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;padding:0;line-height:1}
@@ -142,8 +142,23 @@ tbody tr:hover td{background:#f8f7f3}
 .no-job-sub{font-size:13px;color:var(--text3);max-width:320px}
 
 /* ── New job modal ── */
-.bom-textarea{width:100%;height:160px;padding:9px;font-size:12px;font-family:'DM Mono',monospace;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);color:var(--text);resize:vertical;outline:none}
+.bom-textarea{width:100%;height:140px;padding:9px;font-size:12px;font-family:'DM Mono',monospace;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);color:var(--text);resize:vertical;outline:none}
 .bom-textarea:focus{border-color:var(--blue)}
+.drop-zone{border:2px dashed var(--border2);border-radius:10px;padding:1.5rem 1rem;text-align:center;cursor:pointer;transition:all .15s;background:var(--surface2)}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--blue);background:var(--blue-bg)}
+.drop-zone-icon{font-size:26px;margin-bottom:.35rem;opacity:.5}
+.drop-zone-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+.drop-zone-sub{font-size:11px;color:var(--text3)}
+.drop-zone input[type=file]{display:none}
+.file-chip{display:inline-flex;align-items:center;gap:6px;background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:99px;padding:3px 10px;font-size:12px;color:var(--blue);margin-top:.5rem}
+.preview-table-wrap{max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-top:.6rem}
+.preview-table{width:100%;border-collapse:collapse;font-size:12px}
+.preview-table th{padding:6px 9px;background:var(--surface2);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);border-bottom:1px solid var(--border);position:sticky;top:0}
+.preview-table td{padding:5px 9px;border-bottom:1px solid var(--border);color:var(--text)}
+.preview-table tr:last-child td{border-bottom:none}
+.preview-table td input{width:100%;border:none;background:transparent;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;padding:0}
+.preview-table td input:focus{background:var(--blue-bg);border-radius:3px;padding:0 3px}
+.ai-status{display:flex;align-items:center;gap:8px;padding:.55rem .75rem;background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:8px;font-size:12px;color:var(--blue);margin-top:.5rem}
 .parse-preview{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.7rem;margin-top:.5rem;font-size:12px;max-height:140px;overflow-y:auto}
 .parse-preview-item{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border);color:var(--text2)}
 .parse-preview-item:last-child{border-bottom:none}
@@ -736,49 +751,256 @@ async function deleteRelease(releaseId){
 }
 
 // ─── New job modal ────────────────────────────────────────────────────────────
+let parsedBomItems = []; // holds current preview items
+
 function openNewJobModal(){
+  parsedBomItems = [];
   activeModal={type:'newjob'};
   document.getElementById('modal-title').textContent='Create new job';
   document.getElementById('modal-body').innerHTML=`
     <div class="form-row"><label>Job name / number</label><input type="text" id="nj-name" placeholder="e.g. 45-Main-Street, Harbor Project..."></div>
     <div class="form-row">
-      <label>BOM (bill of materials)</label>
-      <div style="display:flex;gap:6px;margin-bottom:6px">
+      <label>BOM — drop a file or paste text</label>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-blue" id="bom-tab-file" onclick="setBomTab('file')" style="font-size:11px;height:26px">📎 Upload file / photo</button>
+        <button class="btn" id="bom-tab-paste" onclick="setBomTab('paste')" style="font-size:11px;height:26px">✏️ Paste text</button>
         <button class="btn" id="bom-tab-blank" onclick="setBomTab('blank')" style="font-size:11px;height:26px">Start blank</button>
-        <button class="btn btn-blue" id="bom-tab-paste" onclick="setBomTab('paste')" style="font-size:11px;height:26px">Paste BOM</button>
       </div>
+
+      <div id="bom-file-section">
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('bom-file-input').click()"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleFileDrop(event)">
+          <input type="file" id="bom-file-input" accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp" onchange="handleFileSelect(this.files[0])">
+          <div class="drop-zone-icon">📂</div>
+          <div class="drop-zone-title">Drop file here or click to browse</div>
+          <div class="drop-zone-sub">PDF, Excel, CSV, or a photo of your BOM</div>
+        </div>
+        <div id="ai-status-box" style="display:none"></div>
+      </div>
+
+      <div id="bom-paste-section" style="display:none">
+        <textarea class="bom-textarea" id="nj-bom" placeholder="Paste your BOM here. Each line: Item Description, Category, Qty&#10;Example:&#10;3/4&quot; EMT Conduit, EMT Conduits, 5000&#10;&#10;Or just name and qty — categories will be inferred:&#10;3/4&quot; EMT Conduit  5000" oninput="parsePastePreview()"></textarea>
+      </div>
+
       <div id="bom-blank-section" style="display:none">
-        <p style="font-size:12px;color:var(--text3)">Job will be created with no items. You can add items later.</p>
-      </div>
-      <div id="bom-paste-section">
-        <textarea class="bom-textarea" id="nj-bom" placeholder="Paste your BOM here. Each line: Item Description, Category, Qty&#10;Example:&#10;3/4&quot; EMT Conduit, EMT Conduits, 5000&#10;1&quot; EMT Conduit, EMT Conduits, 2000&#10;&#10;Or just: Item name and qty (Claude will infer categories)&#10;3/4&quot; EMT Conduit  5000&#10;1&quot; EMT Conduit  2000" oninput="parseBomPreview()"></textarea>
-        <div id="bom-preview"></div>
+        <p style="font-size:12px;color:var(--text3);padding:.4rem 0">Job will be created with no items. You can add items later.</p>
       </div>
     </div>
+
+    <div id="preview-section" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
+        <span class="sec-label" style="margin:0" id="preview-count"></span>
+        <button class="btn" style="height:24px;font-size:11px" onclick="addPreviewRow()">+ Add row</button>
+      </div>
+      <div class="preview-table-wrap">
+        <table class="preview-table">
+          <thead><tr><th style="width:45%">Item description</th><th style="width:30%">Category</th><th style="width:15%">Qty</th><th style="width:10%"></th></tr></thead>
+          <tbody id="preview-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn" onclick="closeModal()">Cancel</button>
       <button class="btn btn-blue" id="save-btn" onclick="createJob()">Create job</button>
     </div>`;
-  setBomTab('paste');
   document.getElementById('overlay').classList.add('open');
 }
 
 function setBomTab(tab){
-  document.getElementById('bom-blank-section').style.display=tab==='blank'?'block':'none';
-  document.getElementById('bom-paste-section').style.display=tab==='paste'?'block':'none';
-  document.getElementById('bom-tab-blank').className='btn'+(tab==='blank'?' btn-blue':'');
-  document.getElementById('bom-tab-paste').className='btn'+(tab==='paste'?' btn-blue':'');
+  ['file','paste','blank'].forEach(t=>{
+    document.getElementById('bom-'+t+'-section').style.display=t===tab?'block':'none';
+    const btn=document.getElementById('bom-tab-'+t);
+    if(btn) btn.className='btn'+(t===tab?' btn-blue':'');
+  });
+  if(tab!=='file'&&tab!=='paste') { parsedBomItems=[]; renderPreviewTable(); }
 }
 
-function parseBomPreview(){
+// ─── File handling ────────────────────────────────────────────────────────────
+function handleFileDrop(e){
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const file=e.dataTransfer.files[0];
+  if(file) handleFileSelect(file);
+}
+
+async function handleFileSelect(file){
+  if(!file) return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  const dz=document.getElementById('drop-zone');
+  dz.innerHTML=`<div class="file-chip"><span class="spinner"></span> ${esc(file.name)}</div>`;
+
+  try{
+    if(['xlsx','xls'].includes(ext)){
+      await parseExcelFile(file);
+    } else if(ext==='csv'){
+      await parseCsvFile(file);
+    } else if(['png','jpg','jpeg','webp','pdf'].includes(ext)){
+      await parseWithClaude(file, ext);
+    } else {
+      alert('Unsupported file type. Please use PDF, Excel, CSV, or an image.');
+      resetDropZone();
+    }
+  }catch(e){
+    showAiStatus('error','Failed to parse file: '+e);
+    resetDropZone();
+  }
+}
+
+function resetDropZone(){
+  document.getElementById('drop-zone').innerHTML=`
+    <input type="file" id="bom-file-input" accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp" onchange="handleFileSelect(this.files[0])">
+    <div class="drop-zone-icon">📂</div>
+    <div class="drop-zone-title">Drop file here or click to browse</div>
+    <div class="drop-zone-sub">PDF, Excel, CSV, or a photo of your BOM</div>`;
+}
+
+// ─── Excel / CSV parsing (client-side) ───────────────────────────────────────
+async function parseExcelFile(file){
+  const buf=await file.arrayBuffer();
+  const wb=XLSX.read(buf,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+  parsedBomItems=extractItemsFromRows(rows);
+  finishFileParse(file.name, parsedBomItems.length);
+}
+
+async function parseCsvFile(file){
+  const text=await file.text();
+  const rows=text.split('\n').map(r=>r.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+  parsedBomItems=extractItemsFromRows(rows);
+  finishFileParse(file.name, parsedBomItems.length);
+}
+
+function extractItemsFromRows(rows){
+  const items=[];
+  // Find header row
+  let dataStart=0;
+  for(let i=0;i<Math.min(5,rows.length);i++){
+    const row=rows[i].map(c=>String(c).toLowerCase());
+    if(row.some(c=>c.includes('description')||c.includes('item')||c.includes('material'))) { dataStart=i+1; break; }
+  }
+  for(let i=dataStart;i<rows.length;i++){
+    const row=rows[i];
+    if(!row||row.every(c=>!c)) continue;
+    // Find qty — last numeric column
+    let qty=0, qtyIdx=-1;
+    for(let j=row.length-1;j>=0;j--){
+      const n=parseInt(String(row[j]).replace(/[^0-9]/g,''));
+      if(n>0){qty=n;qtyIdx=j;break;}
+    }
+    if(!qty) continue;
+    const name=String(row[0]||'').trim();
+    if(!name||name.length<2) continue;
+    // Category: second column if exists and not the qty col
+    let cat='';
+    if(row.length>=3 && qtyIdx>=2) cat=String(row[1]||'').trim();
+    items.push({name,category:cat||inferCategory(name),qty});
+  }
+  return items;
+}
+
+// ─── Claude API parsing (images + PDFs) ──────────────────────────────────────
+async function parseWithClaude(file, ext){
+  showAiStatus('loading','Reading your BOM with AI...');
+  const base64=await fileToBase64(file);
+  const isPdf=ext==='pdf';
+  const mediaType=isPdf?'application/pdf':({png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp'}[ext]||'image/jpeg');
+
+  const contentBlock=isPdf
+    ? {type:'document',source:{type:'base64',media_type:mediaType,data:base64}}
+    : {type:'image',source:{type:'base64',media_type:mediaType,data:base64}};
+
+  const prompt=`You are parsing a Bill of Materials (BOM) from a construction/electrical project.
+Extract ALL line items from this document. For each item return JSON.
+Respond ONLY with a valid JSON array, no markdown, no explanation:
+[{"name":"item description","category":"category name","qty":1234}, ...]
+
+Rules:
+- name: full item description including size (e.g. "3/4\\" EMT Conduit")
+- category: group similar items (e.g. "EMT Conduits & Fittings", "Supports & Hardware", "Boxes", etc.)
+- qty: integer quantity only
+- Skip header rows, totals, and blank rows
+- Include every line item you can find`;
+
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:4000,
+        messages:[{role:'user',content:[contentBlock,{type:'text',text:prompt}]}]
+      })
+    });
+    const data=await resp.json();
+    const text=data.content?.find(b=>b.type==='text')?.text||'';
+    const clean=text.replace(/```json|```/g,'').trim();
+    parsedBomItems=JSON.parse(clean);
+    showAiStatus('done',`✓ AI found ${parsedBomItems.length} items`);
+    finishFileParse(file.name, parsedBomItems.length);
+  }catch(e){
+    showAiStatus('error','AI parsing failed — try pasting the text instead');
+    console.error(e);
+  }
+}
+
+function fileToBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.onerror=rej;
+    r.readAsDataURL(file);
+  });
+}
+
+function showAiStatus(state,msg){
+  const el=document.getElementById('ai-status-box');
+  if(!el)return;
+  el.style.display='block';
+  const icon={loading:'<span class="spinner"></span>',done:'✓',error:'⚠️'}[state]||'';
+  const color=state==='error'?'var(--red-bg)':state==='done'?'var(--green-bg)':'var(--blue-bg)';
+  const borderColor=state==='error'?'var(--red-border)':state==='done'?'var(--green-border)':'var(--blue-border)';
+  const textColor=state==='error'?'var(--red)':state==='done'?'var(--green)':'var(--blue)';
+  el.innerHTML=`<div class="ai-status" style="background:${color};border-color:${borderColor};color:${textColor}">${icon} ${msg}</div>`;
+}
+
+function finishFileParse(filename, count){
+  const dz=document.getElementById('drop-zone');
+  dz.innerHTML=`<div class="file-chip">📄 ${esc(filename)} <span style="opacity:.6;cursor:pointer" onclick="resetDropZone();parsedBomItems=[];renderPreviewTable()">✕</span></div>`;
+  renderPreviewTable();
+}
+
+// ─── Paste text parsing ───────────────────────────────────────────────────────
+function parsePastePreview(){
   const text=document.getElementById('nj-bom').value;
-  const parsed=parseBomText(text);
-  const el=document.getElementById('bom-preview');
-  if(!parsed.length){el.innerHTML='';return;}
-  el.innerHTML=`<div class="parse-preview"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px">${parsed.length} items parsed</div>`+
-    parsed.slice(0,8).map(i=>`<div class="parse-preview-item"><span>${esc(i.name)}</span><span style="color:var(--text3)">${i.category} · ${i.qty.toLocaleString()}</span></div>`).join('')+
-    (parsed.length>8?`<div style="font-size:11px;color:var(--text3);padding-top:4px">...and ${parsed.length-8} more</div>`:'')+
-    '</div>';
+  parsedBomItems=parseBomText(text);
+  renderPreviewTable();
+}
+
+// ─── Preview table ────────────────────────────────────────────────────────────
+function renderPreviewTable(){
+  const section=document.getElementById('preview-section');
+  if(!parsedBomItems.length){section.style.display='none';return;}
+  section.style.display='block';
+  document.getElementById('preview-count').textContent=parsedBomItems.length+' items — click any cell to edit';
+  document.getElementById('preview-tbody').innerHTML=parsedBomItems.map((item,i)=>`
+    <tr>
+      <td><input value="${esc(item.name)}" oninput="parsedBomItems[${i}].name=this.value" placeholder="Item name"></td>
+      <td><input value="${esc(item.category)}" oninput="parsedBomItems[${i}].category=this.value" placeholder="Category"></td>
+      <td><input type="number" value="${item.qty}" oninput="parsedBomItems[${i}].qty=parseInt(this.value)||0" style="width:70px"></td>
+      <td><button onclick="parsedBomItems.splice(${i},1);renderPreviewTable()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 4px" title="Remove">✕</button></td>
+    </tr>`).join('');
+}
+
+function addPreviewRow(){
+  parsedBomItems.push({name:'',category:'General',qty:0});
+  renderPreviewTable();
+  // Focus last row name input
+  const inputs=document.querySelectorAll('#preview-tbody input');
+  if(inputs.length) inputs[inputs.length-4].focus();
 }
 
 function parseBomText(text){
@@ -831,19 +1053,27 @@ function inferCategory(name){
 async function createJob(){
   const name=(document.getElementById('nj-name')||{}).value||'';
   if(!name.trim()){alert('Enter a job name.');return;}
-  const blankVisible=document.getElementById('bom-blank-section').style.display!=='none';
-  const bomText=blankVisible?'':(document.getElementById('nj-bom')||{}).value||'';
-  const parsedItems=parseBomText(bomText);
+
+  // Get items from preview (file/paste) or blank
+  const blankVisible=document.getElementById('bom-blank-section')&&document.getElementById('bom-blank-section').style.display!=='none';
+  const pasteVisible=document.getElementById('bom-paste-section')&&document.getElementById('bom-paste-section').style.display!=='none';
+
+  // Re-parse paste text in case preview wasn't triggered
+  if(pasteVisible && !parsedBomItems.length){
+    const text=(document.getElementById('nj-bom')||{}).value||'';
+    parsedBomItems=parseBomText(text);
+  }
+
+  const finalItems=blankVisible?[]:parsedBomItems.filter(i=>i.name&&i.qty>0);
 
   setBtnLoading('save-btn',true,'Creating...');
   try{
     const jobId='job-'+Date.now();
     await sbPost('jobs',{id:jobId,name:name.trim()});
-    if(parsedItems.length>0){
-      const rows=parsedItems.map(i=>({job_id:jobId,item_name:i.name,category:i.category,total_qty:i.qty}));
+    if(finalItems.length>0){
+      const rows=finalItems.map(i=>({job_id:jobId,item_name:i.name,category:i.category||inferCategory(i.name),total_qty:parseInt(i.qty)||0}));
       for(let i=0;i<rows.length;i+=50) await sbPost('job_items',rows.slice(i,i+50));
     }
-    // Refresh
     const allJobs=await sbGet('jobs','order=created_at.asc');
     jobs=allJobs;
     const allItems=await sbGet('job_items','order=created_at.asc&limit=10000');
@@ -852,7 +1082,7 @@ async function createJob(){
     closeModal();
     renderSidebar();
     await selectJob(jobId);
-    toast(`✓ Job "${name.trim()}" created`+(parsedItems.length?` with ${parsedItems.length} items`:''));
+    toast(`✓ Job "${name.trim()}" created`+(finalItems.length?` with ${finalItems.length} items`:''));
   }catch(e){alert('Failed to create job: '+e);}
   setBtnLoading('save-btn',false,'Create job');
 }
