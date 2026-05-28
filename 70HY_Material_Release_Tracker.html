@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Material Release Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f4f0;--surface:#fff;--surface2:#f0efe9;--border:#e2e0d8;--border2:#d0cec4;
+  --text:#1a1917;--text2:#6b6860;--text3:#9e9b96;
+  --blue:#1a5fa8;--blue-bg:#e8f0f9;--blue-border:#b8d0ee;
+  --green:#2d7a3a;--green-bg:#e6f4e8;--green-border:#a8d8af;
+  --amber:#8a5c00;--amber-bg:#fef3dc;--amber-border:#f5d485;
+  --red:#a02020;--red-bg:#fdeaea;--red-border:#f0aaaa;
+  --pink:#8a2060;--pink-bg:#fce8f3;--pink-border:#e8b0d0;
+  --sidebar:220px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;display:flex;flex-direction:column}
+
+/* ── Layout ── */
+.layout{display:flex;flex:1;min-height:0}
+.sidebar{width:var(--sidebar);background:var(--text);flex-shrink:0;display:flex;flex-direction:column;min-height:100vh;position:sticky;top:0}
+.sidebar-logo{padding:1rem 1.1rem .75rem;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar-logo-title{font-size:13px;font-weight:600;color:#fff;letter-spacing:-.01em}
+.sidebar-logo-sub{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.35);padding:.85rem 1.1rem .35rem}
+.sidebar-jobs{flex:1;overflow-y:auto;padding-bottom:.5rem}
+.job-item{display:flex;align-items:center;padding:.55rem 1.1rem;cursor:pointer;gap:8px;border-radius:0;transition:background .12s;border-left:3px solid transparent}
+.job-item:hover{background:rgba(255,255,255,.07)}
+.job-item.active{background:rgba(255,255,255,.12);border-left-color:var(--blue)}
+.job-item-info{flex:1;min-width:0}
+.job-item-name{font-size:13px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.job-item-sub{font-size:11px;color:rgba(255,255,255,.4);margin-top:1px}
+.job-item-pct{font-size:11px;font-weight:600;color:rgba(255,255,255,.5);flex-shrink:0}
+.job-item.active .job-item-pct{color:var(--blue-bg)}
+.sidebar-footer{padding:.75rem 1.1rem;border-top:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:6px}
+.sidebar-btn{width:100%;height:30px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:6px;color:#fff;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .12s}
+.sidebar-btn:hover{background:rgba(255,255,255,.18)}
+.sidebar-btn.green{background:rgba(45,122,58,.5);border-color:rgba(45,122,58,.6)}
+.sidebar-btn.green:hover{background:rgba(45,122,58,.7)}
+
+/* ── Main area ── */
+.main-area{flex:1;display:flex;flex-direction:column;min-width:0}
+.app-header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.75rem;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:40}
+.header-job{font-size:14px;font-weight:600;color:var(--text)}
+.header-job span{color:var(--text3);font-weight:400;margin-left:6px;font-size:13px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#ccc;display:inline-block;margin-right:5px;transition:background .3s}
+.sync-dot.ok{background:var(--green)}.sync-dot.syncing{background:var(--amber);animation:pulse 1s infinite}.sync-dot.err{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-label{font-size:12px;color:var(--text3)}
+.nav{display:flex;gap:2px;background:var(--surface2);border-radius:8px;padding:3px;border:1px solid var(--border)}
+.nav-btn{padding:4px 13px;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;background:transparent;border:none;cursor:pointer;color:var(--text2);border-radius:6px;transition:all .15s}
+.nav-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.btn{height:32px;padding:0 13px;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+.btn:hover{background:var(--surface2)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-blue{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border)}.btn-blue:hover{background:#d8e8f6}
+.btn-green{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}.btn-green:hover{background:#d4ecd8}
+.btn-red{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
+
+/* ── Content ── */
+.content{padding:1.25rem 1.75rem;flex:1}
+.tab-content{display:none}.tab-content.active{display:block}
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.9rem 1rem}
+.metric-label{font-size:11px;color:var(--text2);margin-bottom:3px;font-weight:500}
+.metric-value{font-size:22px;font-weight:600;letter-spacing:-.02em}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem}
+.cat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.8rem .9rem}
+.cat-card-name{font-size:12px;font-weight:600;margin-bottom:1px}
+.cat-card-sub{font-size:11px;color:var(--text3);margin-bottom:.5rem}
+.bar-track{background:var(--surface2);border-radius:99px;height:6px;overflow:hidden;border:1px solid var(--border)}
+.bar-fill{height:100%;border-radius:99px;background:var(--blue);transition:width .4s}
+.bar-pct{font-size:12px;font-weight:600;color:var(--blue);margin-top:4px}
+.search-wrap{position:relative;margin-bottom:.6rem}
+.search-wrap input{width:100%;height:36px;padding:0 36px 0 13px;font-size:13px;font-family:'DM Sans',sans-serif;border:1px solid var(--border2);border-radius:9px;background:var(--surface);color:var(--text);outline:none}
+.search-wrap input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-bg)}
+.result-list{display:flex;flex-direction:column;gap:5px}
+.result-item{display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--surface);border:1px solid var(--border);border-radius:9px;cursor:pointer;transition:all .12s}
+.result-item:hover{border-color:var(--blue-border);background:var(--blue-bg)}
+.result-desc{flex:1;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.result-cat{font-size:11px;color:var(--text3)}
+.result-mini-bar{width:50px;height:4px;background:var(--surface2);border-radius:99px;overflow:hidden;flex-shrink:0}
+.result-mini-fill{height:100%;background:var(--blue);border-radius:99px}
+.result-pct{font-size:11px;font-weight:600;color:var(--blue);min-width:28px;text-align:right;flex-shrink:0}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;flex-shrink:0;white-space:nowrap}
+.b-pending{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.b-partial{background:var(--pink-bg);color:var(--pink);border:1px solid var(--pink-border)}
+.b-released{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+.b-delivered{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.b-installed{background:#e8f5ee;color:#1a6e3a;border:1px solid #9fd4b0}
+.toolbar{display:flex;gap:7px;margin-bottom:.9rem;flex-wrap:wrap;align-items:center}
+.toolbar input[type=text]{flex:1;min-width:140px;height:32px;padding:0 11px;font-size:13px;font-family:'DM Sans',sans-serif;border:1px solid var(--border2);border-radius:7px;background:var(--surface);color:var(--text);outline:none}
+.toolbar input:focus{border-color:var(--blue)}
+.toolbar select,.toolbar input[type=date]{height:32px;padding:0 9px;font-size:12px;font-family:'DM Sans',sans-serif;border:1px solid var(--border2);border-radius:7px;background:var(--surface);color:var(--text);outline:none;cursor:pointer}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+thead tr{background:var(--surface2)}
+th{padding:8px 11px;text-align:left;font-weight:600;font-size:10px;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;letter-spacing:.04em;text-transform:uppercase}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--text);background:#e8e6de}
+th.sort-asc::after{content:' ↑';color:var(--blue)}
+th.sort-desc::after{content:' ↓';color:var(--blue)}
+td{padding:7px 11px;border-bottom:1px solid var(--border);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#f8f7f3}
+.pagination{display:flex;align-items:center;gap:7px;margin-top:.6rem;justify-content:flex-end;font-size:12px;color:var(--text2)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:14px;padding:1.25rem;width:480px;max-width:94vw;max-height:88vh;overflow-y:auto;border:1px solid var(--border)}
+.modal-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.9rem;gap:10px}
+.modal-title{font-size:14px;font-weight:600;line-height:1.3}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;padding:0;line-height:1}
+.mini-metrics{display:flex;gap:7px;margin-bottom:.9rem}
+.mini-metric{flex:1;background:var(--surface2);border-radius:7px;padding:.55rem .7rem;border:1px solid var(--border)}
+.mini-metric-label{font-size:10px;color:var(--text3);margin-bottom:2px}
+.mini-metric-value{font-size:15px;font-weight:600}
+.sec-label{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin:.65rem 0 .35rem}
+.release-item{border:1px solid var(--border);border-radius:7px;padding:.55rem .7rem;margin-bottom:.35rem}
+.release-item-head{display:flex;align-items:center;gap:7px;margin-bottom:3px}
+.release-meta{font-size:11px;color:var(--text3);display:flex;flex-wrap:wrap;gap:9px}
+.form-row{margin-bottom:.6rem}
+.form-row label{display:block;font-size:11px;font-weight:500;color:var(--text2);margin-bottom:3px}
+.form-row input,.form-row select,.form-row textarea{width:100%;height:32px;padding:0 9px;font-size:13px;font-family:'DM Sans',sans-serif;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);color:var(--text);outline:none}
+.form-row input:focus,.form-row select:focus{border-color:var(--blue);background:var(--surface)}
+.form-row textarea{height:56px;padding:7px 9px;resize:vertical}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.modal-actions{display:flex;gap:7px;justify-content:flex-end;margin-top:.9rem;padding-top:.7rem;border-top:1px solid var(--border)}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:1.25rem;right:1.25rem;background:#1a1917;color:#fff;padding:.6rem .9rem;border-radius:9px;font-size:12px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.empty-state{text-align:center;padding:2.5rem;color:var(--text3);font-size:12px}
+
+/* ── No job selected ── */
+.no-job{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:3rem;text-align:center;gap:.75rem}
+.no-job-icon{font-size:40px;opacity:.3}
+.no-job-title{font-size:16px;font-weight:600;color:var(--text)}
+.no-job-sub{font-size:13px;color:var(--text3);max-width:320px}
+
+/* ── New job modal ── */
+.bom-textarea{width:100%;height:160px;padding:9px;font-size:12px;font-family:'DM Mono',monospace;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);color:var(--text);resize:vertical;outline:none}
+.bom-textarea:focus{border-color:var(--blue)}
+.parse-preview{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.7rem;margin-top:.5rem;font-size:12px;max-height:140px;overflow-y:auto}
+.parse-preview-item{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border);color:var(--text2)}
+.parse-preview-item:last-child{border-bottom:none}
+
+@media(max-width:700px){.sidebar{width:180px}.summary-grid{grid-template-columns:1fr 1fr}.cat-grid{grid-template-columns:1fr 1fr}.content{padding:1rem}}
+</style>
+</head>
+<body>
+
+<div class="layout">
+<!-- ── SIDEBAR ── -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-title">Material Tracker</div>
+    <div class="sidebar-logo-sub">Release Management</div>
+  </div>
+  <div class="sidebar-section">Jobs</div>
+  <div class="sidebar-jobs" id="sidebar-jobs">
+    <div style="padding:1rem 1.1rem;font-size:12px;color:rgba(255,255,255,.3)"><span class="spinner" style="border-top-color:rgba(255,255,255,.4);border-color:rgba(255,255,255,.15)"></span></div>
+  </div>
+  <div class="sidebar-footer">
+    <button class="sidebar-btn green" onclick="openNewJobModal()">+ New job</button>
+    <button class="sidebar-btn" onclick="exportExcel()" id="export-btn" disabled>↓ Export Excel</button>
+  </div>
+</nav>
+
+<!-- ── MAIN AREA ── -->
+<div class="main-area">
+  <header class="app-header">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="header-job" id="header-job-name">Select a job</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="display:flex;align-items:center">
+        <span class="sync-dot" id="sync-dot"></span>
+        <span class="sync-label" id="sync-label">Connecting...</span>
+      </div>
+      <div class="nav" id="main-nav" style="display:none">
+        <button class="nav-btn active" onclick="showTab('dashboard')">Dashboard</button>
+        <button class="nav-btn" onclick="showTab('detail')">All items</button>
+        <button class="nav-btn" onclick="showTab('log')">Release log</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="content" id="main-content">
+    <!-- No job selected state -->
+    <div class="no-job" id="no-job-state">
+      <div class="no-job-icon">📋</div>
+      <div class="no-job-title">No job selected</div>
+      <div class="no-job-sub">Choose a job from the sidebar, or create a new one to get started.</div>
+      <button class="btn btn-blue" onclick="openNewJobModal()">+ Create first job</button>
+    </div>
+
+    <!-- Job tabs (hidden until job selected) -->
+    <div id="job-tabs" style="display:none">
+      <div id="tab-dashboard" class="tab-content active">
+        <div class="summary-grid" id="summary-cards"></div>
+        <div class="cat-grid" id="cat-cards"></div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:.55rem">Quick release — search any item</div>
+        <div class="search-wrap">
+          <input type="text" id="dash-search" placeholder="Search items..." oninput="renderSearch()">
+          <svg style="position:absolute;right:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2;pointer-events:none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <div id="search-results" class="result-list"></div>
+      </div>
+
+      <div id="tab-detail" class="tab-content">
+        <div class="toolbar">
+          <input type="text" id="detail-search" placeholder="Search items..." oninput="renderDetail()">
+          <select id="detail-cat" onchange="renderDetail()"><option value="">All categories</option></select>
+          <select id="detail-status" onchange="renderDetail()">
+            <option value="">All statuses</option>
+            <option>Pending</option><option>Partial</option><option>Released</option><option>Delivered</option><option>Installed</option>
+          </select>
+        </div>
+        <div class="tbl-wrap"><table>
+          <thead><tr>
+            <th style="width:33%">Description</th><th style="width:13%">Category</th>
+            <th style="width:9%">BOM qty</th><th style="width:9%">Released</th>
+            <th style="width:13%">Progress</th><th style="width:10%">Status</th>
+            <th style="width:9%">Need by</th><th style="width:4%"></th>
+          </tr></thead>
+          <tbody id="detail-tbl"></tbody>
+        </table></div>
+        <div class="pagination" id="detail-pag"></div>
+      </div>
+
+      <div id="tab-log" class="tab-content">
+        <div class="toolbar">
+          <input type="text" id="log-search" placeholder="Search item name..." oninput="renderLog()">
+          <select id="log-cat" onchange="renderLog()"><option value="">All categories</option></select>
+          <select id="log-status" onchange="renderLog()">
+            <option value="">All statuses</option>
+            <option>Pending</option><option>Released</option><option>Delivered</option><option>Installed</option>
+          </select>
+          <input type="date" id="log-date-from" onchange="renderLog()">
+          <input type="date" id="log-date-to" onchange="renderLog()">
+          <button class="btn" onclick="clearLogFilters()">Clear</button>
+        </div>
+        <div class="tbl-wrap"><table id="log-table">
+          <thead><tr>
+            <th class="sortable" style="width:26%" data-col="item_id" onclick="sortLog('item_id')">Item</th>
+            <th class="sortable" style="width:10%" data-col="category" onclick="sortLog('category')">Category</th>
+            <th class="sortable" style="width:7%" data-col="qty" onclick="sortLog('qty')">Qty</th>
+            <th class="sortable" style="width:10%" data-col="release_date" onclick="sortLog('release_date')">Release date</th>
+            <th class="sortable" style="width:10%" data-col="need_by" onclick="sortLog('need_by')">Need by</th>
+            <th class="sortable" style="width:11%" data-col="supplier" onclick="sortLog('supplier')">Supplier</th>
+            <th class="sortable" style="width:9%" data-col="status" onclick="sortLog('status')">Status</th>
+            <th style="width:9%">Notes</th>
+            <th style="width:8%"></th>
+          </tr></thead>
+          <tbody id="log-tbl"></tbody>
+        </table></div>
+        <div class="pagination" id="log-pag"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ── MODALS ── -->
+<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title"></div>
+      <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── Supabase ──────────────────────────────────────────────────────────────────
+const SB_URL = 'https://vusofoyhybywwwnvrjea.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1c29mb3loeWJ5d3d3bnZyamVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODE1MTQsImV4cCI6MjA5NTQ1NzUxNH0.ke2LVwS0_NDyAAQ1AEbzfb4ukArawvctBcOnt62EYPU';
+const HDR = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=representation'};
+
+async function sbGet(table,params=''){const r=await fetch(`${SB_URL}/rest/v1/${table}?${params}`,{headers:HDR});if(!r.ok)throw await r.text();return r.json();}
+async function sbPost(table,body){const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:HDR,body:JSON.stringify(body)});if(!r.ok)throw await r.text();return r.json();}
+async function sbPatch(table,id,body){const r=await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:'PATCH',headers:{...HDR,'Prefer':'return=representation'},body:JSON.stringify(body)});if(!r.ok)throw await r.text();return r.json();}
+async function sbDelete(table,id){const r=await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:'DELETE',headers:HDR});if(!r.ok)throw await r.text();}
+
+// ─── 70HY default BOM (pre-loaded job) ────────────────────────────────────────
+const DEFAULT_JOB_ID = '70hy-steel';
+const DEFAULT_JOB_NAME = '70HY Steel';
+const DEFAULT_CATS = {
+  "EMT Conduits & Fittings":[["3/4\" EMT Conduit",179700],["1\" EMT Conduit",10200],["1-1/4\" EMT Conduit",1400],["1-1/2\" EMT Conduit",10500],["2\" EMT Conduit",5400],["2-1/2\" EMT Conduit",6400],["3\" EMT Conduit",20250],["4\" EMT Conduit",85000],["3/4\" EMT Connector",7000],["1\" EMT Connector",600],["1-1/4\" EMT Connector",70],["1-1/2\" EMT Connector",600],["2\" EMT Connector",300],["2-1/2\" EMT Connector",350],["3\" EMT Connector",500],["4\" EMT Connector",2000],["3/4\" EMT Coupling",17400],["1\" EMT Coupling",1000],["1-1/4\" EMT Coupling",150],["1-1/2\" EMT Coupling",950],["2\" EMT Coupling",500],["2-1/2\" EMT Coupling",700],["3\" EMT Coupling",2200],["4\" EMT Coupling",8000]],
+  "Galvanized Conduits & Fittings":[["3/4\" RMC Conduit",3800],["1\" RMC Conduit",180],["1-1/4\" RMC Conduit",1000],["1-1/2\" RMC Conduit",1250],["2\" RMC Conduit",1880],["2-1/2\" RMC Conduit",940],["3\" RMC Conduit",1900],["4\" RMC Conduit",1150],["3/4\" RMC Connector",10],["1-1/4\" RMC Connector",10],["1-1/2\" RMC Connector",5],["4\" RMC Connector",30],["3/4\" RMC Coupling",450],["1\" RMC Coupling",200],["1-1/4\" RMC Coupling",50],["1-1/2\" RMC Coupling",50],["2\" RMC Coupling",20]],
+  "Greenfield":[["3/4\" Conduit - FMC",2000],["3/4\" FMC Straight Connectors",600],["1/2\" Conduit - FMC",1000],["1/2\" FMC Straight Connectors",200],["1\" Conduit - FMC",2000],["1\" FMC Straight Connectors",200],["1-1/2\" Conduit - FMC",300],["1-1/2\" FMC Straight Connectors",100],["1-1/4\" Conduit - FMC",300],["1-1/4\" FMC Straight Connectors",100]],
+  "Sealtite":[["3/4\" Sealtite",2000],["3/4\" Sealtite Connectors",200],["1/2\" Sealtite",500],["1/2\" Sealtite Connectors",50],["1\" Sealtite",1000],["1\" Sealtite Connectors",100],["1-1/4\" Sealtite",500],["1-1/4\" Sealtite Connectors",50],["1-1/2\" Sealtite",500],["1-1/2\" Sealtite Connectors",50],["2\" Sealtite",200],["2\" Sealtite Connectors",20]],
+  "Boxes, Supports & Fittings":[["2-1/8\" Deep 4\" Square Box 1/2 & 3/4\" KO",4000],["2-1/8\" D 4-11/16\" Square Box 3/4 & 1\" KO",50],["3-5/16\" D 4-11/16\" Square Box 1\"/1-1/4\"/1-1/2\"/2\" KO",50],["Telescoping Bracket 11-18\" (TSGB16)",500],["Telescoping Bracket 17-26\" (TSGB24)",250],["1/2\" Threaded Rod - 6' Lengths",10000],["3/8\" Threaded Rod - 6' Lengths",7000],["1/2\" Spring Nuts",1000],["3/8\" Spring Nuts",9400],["3/8\" Mini Drop In (Dewalt)",2000],["1/2\" Mini Drop In (Dewalt)",500],["3/8\" U Shape Saddle Washer",1000],["1/2\" U Shape Saddle Washer",3000],["1-5/8\" D Strut Channel 10' Lengths",41200],["3/4\" D Strut Channel 10' Lengths",15000],["1-5/8\" D Kindorf Coupling",200],["1-5/8\" Kindorf Post Base",50],["3/4\" 1-Hole Strap - EMT Steel",2500],["1\" 1-Hole Strap - EMT Steel",1000],["3/4\" 2-Piece Strut Clamp (kindorf)",19500],["1\" 2-Piece Strut Clamp (kindorf)",1600],["1-1/4\" 2-Piece Strut Clamp (kindorf)",5300],["1-1/2\" 2-Piece Strut Clamp (kindorf)",12800],["2\" 2-Piece Strut Clamp (kindorf)",1700],["2-1/2\" 2-Piece Strut Clamp (kindorf)",900],["3\" 2-Piece Strut Clamp (kindorf)",3700],["4\" 2-Piece Strut Clamp (kindorf)",11600]],
+  "Misc. Items":[["3/4\" EMT to Greenfield Change Over",100],["1\" EMT to Greenfield Change Over",100],["2\" MIGB",200],["4\" MIGB",200]]
+};
+
+// ─── App state ────────────────────────────────────────────────────────────────
+let jobs = [];           // [{id, name, created_at}]
+let jobItems = {};       // jobId -> [{id, job_id, item_name, category, total_qty}]
+let releases = [];       // releases for current job
+let currentJobId = null;
+let activeModal = null;
+let detailPage=1, logPage=1;
+const PAGE=25;
+let logSortCol='release_date', logSortDir='desc';
+
+// ─── Derived helpers ─────────────────────────────────────────────────────────
+function currentItems(){ return (jobItems[currentJobId]||[]).map(i=>({id:i.item_name,desc:i.item_name,cat:i.category,totalQty:i.total_qty,dbId:i.id})); }
+function currentCats(){ return [...new Set((jobItems[currentJobId]||[]).map(i=>i.category))]; }
+function itemReleases(itemId){ return releases.filter(r=>r.item_id===itemId); }
+function itemRelQty(itemId){ return itemReleases(itemId).reduce((s,r)=>s+(parseInt(r.qty)||0),0); }
+function itemStatus(item){
+  const rel=itemRelQty(item.id);
+  if(rel===0)return'Pending';
+  if(rel>=item.totalQty){
+    const rs=itemReleases(item.id);
+    if(rs.every(r=>r.status==='Installed'))return'Installed';
+    if(rs.some(r=>r.status==='Delivered'||r.status==='Installed'))return'Delivered';
+    return'Released';
+  }
+  return'Partial';
+}
+function badge(s){const c={Pending:'b-pending',Partial:'b-partial',Released:'b-released',Delivered:'b-delivered',Installed:'b-installed'}[s]||'b-pending';return`<span class="badge ${c}">${s}</span>`;}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function jobPct(jobId){
+  const items=(jobItems[jobId]||[]);
+  const total=items.reduce((s,i)=>s+i.total_qty,0);
+  if(total===0)return 0;
+  // count releases for this job — use pre-loaded releases if current, else estimate 0
+  if(jobId===currentJobId){const rel=items.reduce((s,i)=>s+itemRelQty(i.item_name),0);return Math.round(rel/total*100);}
+  return 0;
+}
+
+// ─── Sync ────────────────────────────────────────────────────────────────────
+function setSyncStatus(state,text){
+  document.getElementById('sync-dot').className='sync-dot '+state;
+  document.getElementById('sync-label').textContent=text;
+}
+
+async function loadAll(){
+  setSyncStatus('syncing','Connecting...');
+  try{
+    // Load jobs
+    const jobsData = await sbGet('jobs','order=created_at.asc');
+    jobs = jobsData;
+
+    // Seed 70HY if not exists
+    if(!jobs.find(j=>j.id===DEFAULT_JOB_ID)){
+      await seedDefaultJob();
+      const refreshed = await sbGet('jobs','order=created_at.asc');
+      jobs = refreshed;
+    }
+
+    // Load all job_items
+    const allItems = await sbGet('job_items','order=created_at.asc&limit=10000');
+    jobItems = {};
+    for(const item of allItems){
+      if(!jobItems[item.job_id]) jobItems[item.job_id]=[];
+      jobItems[item.job_id].push(item);
+    }
+
+    setSyncStatus('ok','Live');
+    renderSidebar();
+
+    // Auto-select first job
+    if(jobs.length>0 && !currentJobId) await selectJob(jobs[0].id);
+
+  }catch(e){
+    setSyncStatus('err','Connection error');
+    console.error(e);
+  }
+}
+
+async function seedDefaultJob(){
+  await sbPost('jobs',{id:DEFAULT_JOB_ID,name:DEFAULT_JOB_NAME});
+  const rows=[];
+  for(const[cat,arr]of Object.entries(DEFAULT_CATS)){
+    for(const[name,qty]of arr){
+      rows.push({job_id:DEFAULT_JOB_ID,item_name:name,category:cat,total_qty:qty});
+    }
+  }
+  // Insert in batches of 50
+  for(let i=0;i<rows.length;i+=50) await sbPost('job_items',rows.slice(i,i+50));
+}
+
+async function selectJob(jobId){
+  currentJobId=jobId;
+  setSyncStatus('syncing','Loading...');
+  try{
+    releases=await sbGet('releases',`job_id=eq.${encodeURIComponent(jobId)}&order=created_at.asc&limit=5000`);
+    setSyncStatus('ok','Live');
+  }catch(e){
+    setSyncStatus('err','Load error');
+    releases=[];
+  }
+  const job=jobs.find(j=>j.id===jobId);
+  document.getElementById('header-job-name').textContent=job?job.name:'Job';
+  document.getElementById('no-job-state').style.display='none';
+  document.getElementById('job-tabs').style.display='block';
+  document.getElementById('main-nav').style.display='flex';
+  document.getElementById('export-btn').disabled=false;
+  showTab('dashboard');
+  renderSidebar();
+  populateCatFilters();
+  refreshAll();
+}
+
+setInterval(async()=>{
+  if(!currentJobId)return;
+  try{
+    releases=await sbGet('releases',`job_id=eq.${encodeURIComponent(currentJobId)}&order=created_at.asc&limit=5000`);
+    setSyncStatus('ok','Live');
+    refreshAll();
+  }catch(e){setSyncStatus('err','Sync error');}
+},30000);
+
+// ─── Sidebar ─────────────────────────────────────────────────────────────────
+function renderSidebar(){
+  const el=document.getElementById('sidebar-jobs');
+  if(!jobs.length){el.innerHTML='<div style="padding:.75rem 1.1rem;font-size:12px;color:rgba(255,255,255,.3)">No jobs yet</div>';return;}
+  el.innerHTML=jobs.map(job=>{
+    const items=jobItems[job.id]||[];
+    const pct=job.id===currentJobId?jobPct(job.id):0;
+    const active=job.id===currentJobId?'active':'';
+    return`<div class="job-item ${active}" onclick="selectJob('${esc(job.id)}')">
+      <div class="job-item-info">
+        <div class="job-item-name">${esc(job.name)}</div>
+        <div class="job-item-sub">${items.length} items</div>
+      </div>
+      <span class="job-item-pct">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+function populateCatFilters(){
+  const cats=currentCats();
+  ['detail-cat','log-cat'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.innerHTML='<option value="">All categories</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join('');
+  });
+}
+
+// ─── Tabs ────────────────────────────────────────────────────────────────────
+function showTab(t){
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',(t==='dashboard'&&i===0)||(t==='detail'&&i===1)||(t==='log'&&i===2)));
+  if(t==='detail')renderDetail();
+  if(t==='log')renderLog();
+}
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+function renderSummary(){
+  const items=currentItems();
+  const total=items.length;
+  const anyRel=items.filter(i=>itemStatus(i)!=='Pending').length;
+  const fullRel=items.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length;
+  const totalQty=items.reduce((s,i)=>s+i.totalQty,0);
+  const relQtyTotal=items.reduce((s,i)=>s+itemRelQty(i.id),0);
+  const pct=totalQty>0?Math.round(relQtyTotal/totalQty*100):0;
+  document.getElementById('summary-cards').innerHTML=
+    `<div class="metric"><div class="metric-label">Overall released</div><div class="metric-value" style="color:var(--blue)">${pct}%</div><div class="metric-sub">${relQtyTotal.toLocaleString()} of ${totalQty.toLocaleString()} units</div></div>`+
+    `<div class="metric"><div class="metric-label">Items started</div><div class="metric-value">${anyRel}<span style="font-size:15px;color:var(--text3)"> / ${total}</span></div></div>`+
+    `<div class="metric"><div class="metric-label">Fully released</div><div class="metric-value">${fullRel}</div></div>`+
+    `<div class="metric"><div class="metric-label">Still pending</div><div class="metric-value">${total-anyRel}</div></div>`;
+  const cats=currentCats();
+  document.getElementById('cat-cards').innerHTML=cats.map(cat=>{
+    const ci=items.filter(i=>i.cat===cat);
+    const t=ci.reduce((s,i)=>s+i.totalQty,0);
+    const r=ci.reduce((s,i)=>s+itemRelQty(i.id),0);
+    const p=t>0?Math.round(r/t*100):0;
+    const started=ci.filter(i=>itemStatus(i)!=='Pending').length;
+    const short=cat.replace(' Conduits & Fittings','').replace(' Items','').replace(' Fittings','');
+    return`<div class="cat-card"><div class="cat-card-name">${esc(short)}</div><div class="cat-card-sub">${started} of ${ci.length} started</div><div class="bar-track"><div class="bar-fill" style="width:${p}%"></div></div><div class="bar-pct">${p}%</div></div>`;
+  }).join('');
+}
+
+function renderSearch(){
+  const q=(document.getElementById('dash-search')||{}).value||'';
+  const el=document.getElementById('search-results');
+  if(!q){el.innerHTML='';return;}
+  const items=currentItems();
+  const matches=items.filter(i=>i.desc.toLowerCase().includes(q.toLowerCase())).slice(0,10);
+  if(!matches.length){el.innerHTML='<p style="font-size:12px;color:var(--text3);padding:.4rem 0">No items found.</p>';return;}
+  el.innerHTML=matches.map(item=>{
+    const rel=itemRelQty(item.id);
+    const pct=item.totalQty>0?Math.round(rel/item.totalQty*100):0;
+    return`<div class="result-item" onclick="openModal('${esc(item.id)}')">
+      <div style="flex:1;min-width:0"><div class="result-desc">${esc(item.desc)}</div><div class="result-cat">${esc(item.cat)}</div></div>
+      <div class="result-mini-bar"><div class="result-mini-fill" style="width:${pct}%"></div></div>
+      <span class="result-pct">${pct}%</span>${badge(itemStatus(item))}
+      <button class="btn btn-blue" style="height:26px;padding:0 9px;font-size:11px" onclick="event.stopPropagation();openModal('${esc(item.id)}')">+ Release</button>
+    </div>`;
+  }).join('');
+}
+
+// ─── Detail tab ───────────────────────────────────────────────────────────────
+function renderDetail(){
+  const items=currentItems();
+  const q=(document.getElementById('detail-search')||{}).value||'';
+  const cat=(document.getElementById('detail-cat')||{}).value||'';
+  const status=(document.getElementById('detail-status')||{}).value||'';
+  const filtered=items.filter(i=>(!q||i.desc.toLowerCase().includes(q.toLowerCase()))&&(!cat||i.cat===cat)&&(!status||itemStatus(i)===status));
+  const totalPages=Math.max(1,Math.ceil(filtered.length/PAGE));
+  if(detailPage>totalPages)detailPage=totalPages;
+  const slice=filtered.slice((detailPage-1)*PAGE,detailPage*PAGE);
+  document.getElementById('detail-tbl').innerHTML=slice.length===0?
+    `<tr><td colspan="8" class="empty-state">No items match.</td></tr>`:
+    slice.map(item=>{
+      const rel=itemRelQty(item.id);
+      const pct=item.totalQty>0?Math.round(rel/item.totalQty*100):0;
+      const lastNeedBy=itemReleases(item.id).map(r=>r.need_by).filter(Boolean).sort().at(-1)||'—';
+      return`<tr>
+        <td title="${esc(item.desc)}">${esc(item.desc)}</td><td>${esc(item.cat.split(' ')[0])}</td>
+        <td>${item.totalQty.toLocaleString()}</td><td>${rel.toLocaleString()}</td>
+        <td><div style="display:inline-block;width:48px;height:4px;background:var(--surface2);border-radius:99px;overflow:hidden;vertical-align:middle"><div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px"></div></div>&nbsp;<span style="font-size:10px;color:var(--text3)">${pct}%</span></td>
+        <td>${badge(itemStatus(item))}</td><td style="color:var(--text3)">${esc(lastNeedBy)}</td>
+        <td><button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openModal('${esc(item.id)}')">&#9776;</button></td>
+      </tr>`;
+    }).join('');
+  const pag=document.getElementById('detail-pag');
+  pag.innerHTML=totalPages<=1?`<span style="color:var(--text3)">${filtered.length} items</span>`:
+    `<span>${filtered.length} items</span>
+     <button class="btn" onclick="detailPage--;renderDetail()" ${detailPage===1?'disabled':''} style="padding:0 9px">‹</button>
+     <span>Page ${detailPage} of ${totalPages}</span>
+     <button class="btn" onclick="detailPage++;renderDetail()" ${detailPage===totalPages?'disabled':''} style="padding:0 9px">›</button>`;
+}
+
+// ─── Log tab ──────────────────────────────────────────────────────────────────
+function renderLog(){
+  const q=(document.getElementById('log-search')||{}).value||'';
+  const cat=(document.getElementById('log-cat')||{}).value||'';
+  const status=(document.getElementById('log-status')||{}).value||'';
+  const df=(document.getElementById('log-date-from')||{}).value||'';
+  const dt=(document.getElementById('log-date-to')||{}).value||'';
+  let rows=[...releases].filter(r=>
+    (!q||r.item_id.toLowerCase().includes(q.toLowerCase()))&&
+    (!cat||r.category===cat)&&(!status||r.status===status)&&
+    (!df||(r.release_date&&r.release_date>=df))&&(!dt||(r.release_date&&r.release_date<=dt))
+  );
+  rows.sort((a,b)=>{
+    let av=a[logSortCol]||'',bv=b[logSortCol]||'';
+    if(logSortCol==='qty'){av=parseInt(a.qty)||0;bv=parseInt(b.qty)||0;}
+    const cmp=typeof av==='number'?(av-bv):String(av).localeCompare(String(bv));
+    return logSortDir==='asc'?cmp:-cmp;
+  });
+  const totalPages=Math.max(1,Math.ceil(rows.length/PAGE));
+  if(logPage>totalPages)logPage=totalPages;
+  const slice=rows.slice((logPage-1)*PAGE,logPage*PAGE);
+  document.getElementById('log-tbl').innerHTML=slice.length===0?
+    `<tr><td colspan="9" class="empty-state">No releases logged yet.</td></tr>`:
+    slice.map((r,i)=>`<tr>
+      <td title="${esc(r.item_id)}"><span style="color:var(--text3);font-size:10px;margin-right:5px">${(logPage-1)*PAGE+i+1}</span>${esc(r.item_id)}</td>
+      <td><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((r.category||'').split(' ')[0])}</span></td>
+      <td style="font-weight:600">${(parseInt(r.qty)||0).toLocaleString()}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${r.release_date||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:${r.need_by?'var(--text)':'var(--text3)'}">${r.need_by||'—'}</td>
+      <td style="color:var(--text2)">${esc(r.supplier||'—')}</td>
+      <td>${badge(r.status||'Released')}</td>
+      <td style="font-size:11px;color:var(--text3)" title="${esc(r.notes||'')}">${esc((r.notes||'').slice(0,22)+((r.notes||'').length>22?'…':''))}</td>
+      <td><div style="display:flex;gap:3px">
+        <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--blue)" onclick="openEditModal('${r.id}')">Edit</button>
+        <button class="btn" style="padding:0 5px;height:24px;font-size:11px;color:var(--red)" onclick="deleteRelease('${r.id}')">✕</button>
+      </div></td>
+    </tr>`).join('');
+  const pag=document.getElementById('log-pag');
+  pag.innerHTML=`<span style="color:var(--text3)">${rows.length} release${rows.length!==1?'s':''}</span>`+(totalPages<=1?'':
+    `<button class="btn" onclick="logPage--;renderLog()" ${logPage===1?'disabled':''} style="padding:0 9px">‹</button>
+     <span>Page ${logPage} of ${totalPages}</span>
+     <button class="btn" onclick="logPage++;renderLog()" ${logPage===totalPages?'disabled':''} style="padding:0 9px">›</button>`);
+  document.querySelectorAll('#log-table th.sortable').forEach(th=>{
+    th.classList.remove('sort-asc','sort-desc');
+    if(th.dataset.col===logSortCol)th.classList.add(logSortDir==='asc'?'sort-asc':'sort-desc');
+  });
+}
+function sortLog(col){logSortCol===col?logSortDir=logSortDir==='asc'?'desc':'asc':(logSortCol=col,logSortDir=(col==='release_date'||col==='need_by')?'desc':'asc');logPage=1;renderLog();}
+function clearLogFilters(){['log-search','log-cat','log-status','log-date-from','log-date-to'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});logPage=1;renderLog();}
+
+// ─── Item modal ───────────────────────────────────────────────────────────────
+function openModal(itemId){
+  const item=currentItems().find(i=>i.id===itemId);
+  if(!item)return;
+  activeModal={type:'item',itemId};
+  document.getElementById('modal-title').textContent=item.desc;
+  buildItemModal(item);
+  document.getElementById('overlay').classList.add('open');
+}
+function buildItemModal(item,editingId=null){
+  const rels=itemReleases(item.id);
+  const rel=itemRelQty(item.id);
+  const remaining=item.totalQty-rel;
+  const histHtml=rels.length===0?'<p style="font-size:12px;color:var(--text3);margin-bottom:.6rem">No releases logged yet.</p>':
+    rels.map(r=>{
+      if(r.id===editingId){
+        return`<div class="release-item" style="border-color:var(--blue-border);background:var(--blue-bg)">
+          <div style="font-size:10px;font-weight:600;color:var(--blue);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.04em">Editing release</div>
+          <div class="form-grid">
+            <div class="form-row"><label>Qty</label><input type="number" id="e-qty" value="${parseInt(r.qty)}" min="1"></div>
+            <div class="form-row"><label>Supplier</label><input type="text" id="e-sup" value="${esc(r.supplier||'')}"></div>
+          </div>
+          <div class="form-grid">
+            <div class="form-row"><label>Release date</label><input type="date" id="e-rdate" value="${esc(r.release_date||'')}"></div>
+            <div class="form-row"><label>Need-by date</label><input type="date" id="e-nby" value="${esc(r.need_by||'')}"></div>
+          </div>
+          <div class="form-row"><label>Status</label><select id="e-st">${['Released','Pending','Delivered','Installed'].map(s=>`<option${r.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
+          <div class="form-row"><label>Notes</label><textarea id="e-notes">${esc(r.notes||'')}</textarea></div>
+          <div style="display:flex;gap:7px;justify-content:flex-end;margin-top:.45rem">
+            <button class="btn" onclick="buildItemModal(currentItems().find(i=>i.id==='${esc(item.id)}'))">Cancel</button>
+            <button class="btn btn-blue" id="save-btn" onclick="saveEdit('${r.id}','${esc(item.id)}')">Save changes</button>
+          </div></div>`;
+      }
+      return`<div class="release-item">
+        <div class="release-item-head">
+          <span style="font-size:13px;font-weight:600;flex:1">${(parseInt(r.qty)||0).toLocaleString()} units</span>
+          ${badge(r.status||'Released')}
+          <div style="display:flex;gap:3px;margin-left:auto">
+            <button class="btn" style="padding:0 7px;height:24px;font-size:11px;color:var(--blue)" onclick="buildItemModal(currentItems().find(i=>i.id==='${esc(item.id)}'),'${r.id}')">Edit</button>
+            <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--red)" onclick="deleteRelease('${r.id}')">✕</button>
+          </div>
+        </div>
+        <div class="release-meta">
+          ${r.release_date?`<span>Released: ${r.release_date}</span>`:''}
+          ${r.need_by?`<span>Need by: ${r.need_by}</span>`:''}
+          ${r.supplier?`<span>Supplier: ${esc(r.supplier)}</span>`:''}
+          ${r.notes?`<span>Note: ${esc(r.notes)}</span>`:''}
+        </div></div>`;
+    }).join('');
+  document.getElementById('modal-body').innerHTML=`
+    <div class="mini-metrics">
+      <div class="mini-metric"><div class="mini-metric-label">BOM qty</div><div class="mini-metric-value">${item.totalQty.toLocaleString()}</div></div>
+      <div class="mini-metric"><div class="mini-metric-label">Released</div><div class="mini-metric-value" style="color:var(--blue)">${rel.toLocaleString()}</div></div>
+      <div class="mini-metric"><div class="mini-metric-label">Remaining</div><div class="mini-metric-value">${remaining.toLocaleString()}</div></div>
+    </div>
+    <div class="sec-label">Release history</div>${histHtml}
+    <div class="sec-label">Log new release</div>
+    <div class="form-grid">
+      <div class="form-row"><label>Qty to release</label><input type="number" id="f-qty" placeholder="e.g. 500" min="1"></div>
+      <div class="form-row"><label>Supplier / vendor</label><input type="text" id="f-sup" placeholder="e.g. Anixter"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Release date</label><input type="date" id="f-rdate"></div>
+      <div class="form-row"><label>Need-by / delivery date</label><input type="date" id="f-nby"></div>
+    </div>
+    <div class="form-row"><label>Status</label><select id="f-st"><option>Released</option><option>Pending</option><option>Delivered</option><option>Installed</option></select></div>
+    <div class="form-row"><label>Notes</label><textarea id="f-notes" placeholder="Any additional info..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-blue" id="save-btn" onclick="saveNewRelease('${esc(item.id)}','${esc(item.cat)}')">+ Log release</button>
+    </div>`;
+}
+
+function openEditModal(releaseId){
+  const r=releases.find(r=>r.id===releaseId);
+  if(!r)return;
+  activeModal={type:'edit',releaseId};
+  document.getElementById('modal-title').textContent='Edit release — '+r.item_id;
+  document.getElementById('modal-body').innerHTML=`
+    <div class="form-grid">
+      <div class="form-row"><label>Qty</label><input type="number" id="e-qty" value="${parseInt(r.qty)}" min="1"></div>
+      <div class="form-row"><label>Supplier</label><input type="text" id="e-sup" value="${esc(r.supplier||'')}"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Release date</label><input type="date" id="e-rdate" value="${esc(r.release_date||'')}"></div>
+      <div class="form-row"><label>Need-by date</label><input type="date" id="e-nby" value="${esc(r.need_by||'')}"></div>
+    </div>
+    <div class="form-row"><label>Status</label><select id="e-st">${['Released','Pending','Delivered','Installed'].map(s=>`<option${r.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="form-row"><label>Notes</label><textarea id="e-notes">${esc(r.notes||'')}</textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-blue" id="save-btn" onclick="saveEdit('${releaseId}',null)">Save changes</button>
+    </div>`;
+  document.getElementById('overlay').classList.add('open');
+}
+
+// ─── CRUD ─────────────────────────────────────────────────────────────────────
+async function saveNewRelease(itemId,category){
+  const qty=parseInt(document.getElementById('f-qty').value);
+  if(!qty||qty<=0){alert('Enter a valid quantity.');return;}
+  setBtnLoading('save-btn',true,'Saving...');
+  try{
+    const row=await sbPost('releases',{job_id:currentJobId,item_id:itemId,category,qty,
+      supplier:document.getElementById('f-sup').value||null,
+      release_date:document.getElementById('f-rdate').value||null,
+      need_by:document.getElementById('f-nby').value||null,
+      status:document.getElementById('f-st').value,
+      notes:document.getElementById('f-notes').value||null
+    });
+    releases.push(Array.isArray(row)?row[0]:row);
+    const item=currentItems().find(i=>i.id===itemId);
+    if(item)buildItemModal(item);
+    refreshAll();
+    toast('✓ Release logged');
+  }catch(e){alert('Save failed: '+e);}
+  setBtnLoading('save-btn',false,'+ Log release');
+}
+
+async function saveEdit(releaseId,itemId){
+  const qty=parseInt(document.getElementById('e-qty').value);
+  if(!qty||qty<=0){alert('Enter a valid quantity.');return;}
+  setBtnLoading('save-btn',true,'Saving...');
+  try{
+    const updated=await sbPatch('releases',releaseId,{qty,
+      supplier:document.getElementById('e-sup').value||null,
+      release_date:document.getElementById('e-rdate').value||null,
+      need_by:document.getElementById('e-nby').value||null,
+      status:document.getElementById('e-st').value,
+      notes:document.getElementById('e-notes').value||null
+    });
+    const idx=releases.findIndex(r=>r.id===releaseId);
+    if(idx>=0)releases[idx]=Array.isArray(updated)?updated[0]:updated;
+    if(itemId){const item=currentItems().find(i=>i.id===itemId);if(item)buildItemModal(item);}
+    else closeModal();
+    refreshAll();
+    toast('✓ Release updated');
+  }catch(e){alert('Update failed: '+e);}
+  setBtnLoading('save-btn',false,'Save changes');
+}
+
+async function deleteRelease(releaseId){
+  if(!confirm('Delete this release?'))return;
+  try{
+    await sbDelete('releases',releaseId);
+    releases=releases.filter(r=>r.id!==releaseId);
+    closeModal();
+    refreshAll();
+    toast('Release deleted');
+  }catch(e){alert('Delete failed: '+e);}
+}
+
+// ─── New job modal ────────────────────────────────────────────────────────────
+function openNewJobModal(){
+  activeModal={type:'newjob'};
+  document.getElementById('modal-title').textContent='Create new job';
+  document.getElementById('modal-body').innerHTML=`
+    <div class="form-row"><label>Job name / number</label><input type="text" id="nj-name" placeholder="e.g. 45-Main-Street, Harbor Project..."></div>
+    <div class="form-row">
+      <label>BOM (bill of materials)</label>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <button class="btn" id="bom-tab-blank" onclick="setBomTab('blank')" style="font-size:11px;height:26px">Start blank</button>
+        <button class="btn btn-blue" id="bom-tab-paste" onclick="setBomTab('paste')" style="font-size:11px;height:26px">Paste BOM</button>
+      </div>
+      <div id="bom-blank-section" style="display:none">
+        <p style="font-size:12px;color:var(--text3)">Job will be created with no items. You can add items later.</p>
+      </div>
+      <div id="bom-paste-section">
+        <textarea class="bom-textarea" id="nj-bom" placeholder="Paste your BOM here. Each line: Item Description, Category, Qty&#10;Example:&#10;3/4&quot; EMT Conduit, EMT Conduits, 5000&#10;1&quot; EMT Conduit, EMT Conduits, 2000&#10;&#10;Or just: Item name and qty (Claude will infer categories)&#10;3/4&quot; EMT Conduit  5000&#10;1&quot; EMT Conduit  2000" oninput="parseBomPreview()"></textarea>
+        <div id="bom-preview"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-blue" id="save-btn" onclick="createJob()">Create job</button>
+    </div>`;
+  setBomTab('paste');
+  document.getElementById('overlay').classList.add('open');
+}
+
+function setBomTab(tab){
+  document.getElementById('bom-blank-section').style.display=tab==='blank'?'block':'none';
+  document.getElementById('bom-paste-section').style.display=tab==='paste'?'block':'none';
+  document.getElementById('bom-tab-blank').className='btn'+(tab==='blank'?' btn-blue':'');
+  document.getElementById('bom-tab-paste').className='btn'+(tab==='paste'?' btn-blue':'');
+}
+
+function parseBomPreview(){
+  const text=document.getElementById('nj-bom').value;
+  const parsed=parseBomText(text);
+  const el=document.getElementById('bom-preview');
+  if(!parsed.length){el.innerHTML='';return;}
+  el.innerHTML=`<div class="parse-preview"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px">${parsed.length} items parsed</div>`+
+    parsed.slice(0,8).map(i=>`<div class="parse-preview-item"><span>${esc(i.name)}</span><span style="color:var(--text3)">${i.category} · ${i.qty.toLocaleString()}</span></div>`).join('')+
+    (parsed.length>8?`<div style="font-size:11px;color:var(--text3);padding-top:4px">...and ${parsed.length-8} more</div>`:'')+
+    '</div>';
+}
+
+function parseBomText(text){
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l&&!l.startsWith('#'));
+  const items=[];
+  for(const line of lines){
+    // Try comma-separated: name, category, qty
+    const commaParts=line.split(',').map(p=>p.trim());
+    if(commaParts.length>=3){
+      const qty=parseInt(commaParts[commaParts.length-1].replace(/[^0-9]/g,''));
+      if(qty>0){
+        items.push({name:commaParts[0],category:commaParts[1],qty});
+        continue;
+      }
+    }
+    // Try tab or multiple spaces: name  qty
+    const tabParts=line.split(/\t|  +/).map(p=>p.trim()).filter(Boolean);
+    if(tabParts.length>=2){
+      const qtyStr=tabParts[tabParts.length-1].replace(/[^0-9]/g,'');
+      const qty=parseInt(qtyStr);
+      if(qty>0){
+        const name=tabParts.slice(0,-1).join(' ');
+        items.push({name,category:inferCategory(name),qty});
+        continue;
+      }
+    }
+    // Try: everything except trailing number
+    const match=line.match(/^(.+?)\s+([\d,]+)\s*$/);
+    if(match){
+      const name=match[1].trim();
+      const qty=parseInt(match[2].replace(/,/g,''));
+      if(qty>0) items.push({name,category:inferCategory(name),qty});
+    }
+  }
+  return items;
+}
+
+function inferCategory(name){
+  const n=name.toLowerCase();
+  if(n.includes('emt'))return'EMT Conduits & Fittings';
+  if(n.includes('rmc')||n.includes('galv'))return'Galvanized Conduits & Fittings';
+  if(n.includes('fmc')||n.includes('greenfield'))return'Greenfield';
+  if(n.includes('sealtite')||n.includes('liquid tight'))return'Sealtite';
+  if(n.includes('strut')||n.includes('box')||n.includes('rod')||n.includes('strap')||n.includes('clamp')||n.includes('kindorf'))return'Supports & Fittings';
+  if(n.includes('conduit'))return'Conduit';
+  if(n.includes('connector')||n.includes('coupling')||n.includes('fitting'))return'Fittings';
+  return'General';
+}
+
+async function createJob(){
+  const name=(document.getElementById('nj-name')||{}).value||'';
+  if(!name.trim()){alert('Enter a job name.');return;}
+  const blankVisible=document.getElementById('bom-blank-section').style.display!=='none';
+  const bomText=blankVisible?'':(document.getElementById('nj-bom')||{}).value||'';
+  const parsedItems=parseBomText(bomText);
+
+  setBtnLoading('save-btn',true,'Creating...');
+  try{
+    const jobId='job-'+Date.now();
+    await sbPost('jobs',{id:jobId,name:name.trim()});
+    if(parsedItems.length>0){
+      const rows=parsedItems.map(i=>({job_id:jobId,item_name:i.name,category:i.category,total_qty:i.qty}));
+      for(let i=0;i<rows.length;i+=50) await sbPost('job_items',rows.slice(i,i+50));
+    }
+    // Refresh
+    const allJobs=await sbGet('jobs','order=created_at.asc');
+    jobs=allJobs;
+    const allItems=await sbGet('job_items','order=created_at.asc&limit=10000');
+    jobItems={};
+    for(const item of allItems){if(!jobItems[item.job_id])jobItems[item.job_id]=[];jobItems[item.job_id].push(item);}
+    closeModal();
+    renderSidebar();
+    await selectJob(jobId);
+    toast(`✓ Job "${name.trim()}" created`+(parsedItems.length?` with ${parsedItems.length} items`:''));
+  }catch(e){alert('Failed to create job: '+e);}
+  setBtnLoading('save-btn',false,'Create job');
+}
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+function closeModal(){document.getElementById('overlay').classList.remove('open');activeModal=null;}
+function handleOverlayClick(e){if(e.target===document.getElementById('overlay'))closeModal();}
+function setBtnLoading(id,loading,label){const b=document.getElementById(id);if(!b)return;b.disabled=loading;b.innerHTML=loading?`<span class="spinner"></span> ${label}`:label;}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
+
+function refreshAll(){
+  renderSummary();renderSearch();
+  if(document.getElementById('tab-detail').classList.contains('active'))renderDetail();
+  if(document.getElementById('tab-log').classList.contains('active'))renderLog();
+  renderSidebar();
+}
+
+// ─── Excel export ─────────────────────────────────────────────────────────────
+function exportExcel(){
+  if(!currentJobId)return;
+  const job=jobs.find(j=>j.id===currentJobId);
+  const jobName=job?job.name:'Job';
+  const items=currentItems();
+  const wb=XLSX.utils.book_new();
+  const cats=currentCats();
+  const rows1=[[jobName+' — Material Release Tracker'],['Exported:',new Date().toLocaleDateString()],[],
+    ['Category','Total Items','BOM Qty','Released Qty','Remaining','% Released','Items Started','Fully Released','Pending']];
+  for(const cat of cats){
+    const ci=items.filter(i=>i.cat===cat);
+    const t=ci.reduce((s,i)=>s+i.totalQty,0);
+    const r=ci.reduce((s,i)=>s+itemRelQty(i.id),0);
+    rows1.push([cat,ci.length,t,r,t-r,t>0?Math.round(r/t*100)+'%':'0%',
+      ci.filter(i=>itemStatus(i)!=='Pending').length,
+      ci.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length,
+      ci.filter(i=>itemStatus(i)==='Pending').length]);
+  }
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows1),'Summary');
+  const rows2=[['Description','Category','BOM Qty','Total Released','Remaining','% Released','Status']];
+  for(const item of items){const rel=itemRelQty(item.id);rows2.push([item.desc,item.cat,item.totalQty,rel,item.totalQty-rel,item.totalQty>0?Math.round(rel/item.totalQty*100)+'%':'0%',itemStatus(item)]);}
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows2),'All Line Items');
+  const rows3=[['Item','Category','Qty Released','Release Date','Need-By','Supplier','Status','Notes']];
+  for(const r of releases)rows3.push([r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.need_by||'',r.supplier||'',r.status||'',r.notes||'']);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows3),'Release Log');
+  XLSX.writeFile(wb,jobName.replace(/[^a-z0-9]/gi,'_')+'_Releases_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+loadAll();
+</script>
+</body>
+</html>
