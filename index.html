@@ -1574,7 +1574,10 @@ async function openAdminPanel() {
 
 async function generateInvite() {
   try {
-    const token = crypto.randomUUID().replace(/-/g,'');
+    // Manual UUID v4 — works without HTTPS
+    const token = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'.replace(/x/g, () =>
+      Math.floor(Math.random() * 16).toString(16)
+    );
     await sbPost('invites', {token, created_by: currentUser.id});
     const url = `${window.location.origin+window.location.pathname}?invite=${token}`;
     await navigator.clipboard.writeText(url).catch(()=>{});
