@@ -668,36 +668,171 @@ function renderLog(){
     const cmp=typeof av==='number'?(av-bv):String(av).localeCompare(String(bv));
     return logSortDir==='asc'?cmp:-cmp;
   });
-  const totalPages=Math.max(1,Math.ceil(rows.length/PAGE));
-  if(logPage>totalPages)logPage=totalPages;
-  const slice=rows.slice((logPage-1)*PAGE,logPage*PAGE);
-  document.getElementById('log-tbl').innerHTML=slice.length===0?
-    `<tr><td colspan="9" class="empty-state">No releases logged yet.</td></tr>`:
-    slice.map((r,i)=>`<tr>
-      <td title="${esc(r.item_id)}"><span style="color:var(--text3);font-size:10px;margin-right:5px">${(logPage-1)*PAGE+i+1}</span>${esc(r.item_id)}</td>
-      <td><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((r.category||'').split(' ')[0])}</span></td>
-      <td style="font-weight:600">${(parseInt(r.qty)||0).toLocaleString()}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:11px">${r.release_date||'—'}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:11px;color:${r.need_by?'var(--text)':'var(--text3)'}">${r.need_by||'—'}</td>
-      <td style="color:var(--text2)">${esc(r.supplier||'—')}</td>
-      <td>${badge(r.status||'Released')}</td>
-      <td style="font-size:11px;color:var(--text3)" title="${esc(r.notes||'')}">${esc((r.notes||'').slice(0,22)+((r.notes||'').length>22?'…':''))}</td>
-      <td style="font-size:11px;color:var(--text3)">${r.logged_by_username?'<span style="background:var(--blue-bg);color:var(--blue);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">'+esc(r.logged_by_username)+'</span>':'—'}</td>
-      <td><div style="display:flex;gap:3px">
-        <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--blue)" onclick="openEditModal('${r.id}')">Edit</button>
-        <button class="btn" style="padding:0 5px;height:24px;font-size:11px;color:var(--red)" onclick="deleteRelease('${r.id}')">✕</button>
-      </div></td>
-    </tr>`).join('');
+
+  // Group bulk releases together — show bulk header rows + individual item rows
+  const rendered = [];
+  const seenBulkIds = new Set();
+  let rowNum = 0;
+
+  for(const r of rows){
+    rowNum++;
+    if(r.bulk_id && !seenBulkIds.has(r.bulk_id)){
+      // First time we see this bulk_id — render a bulk group header
+      seenBulkIds.add(r.bulk_id);
+      const bulkGroup = rows.filter(x=>x.bulk_id===r.bulk_id);
+      const totalQty = bulkGroup.reduce((s,x)=>s+(parseInt(x.qty)||0),0);
+      rendered.push(`<tr style="background:var(--blue-bg)">
+        <td colspan="9" style="padding:6px 11px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:600;color:var(--blue)">📦 Bulk release — ${bulkGroup.length} items · ${totalQty.toLocaleString()} units total</span>
+            <span style="font-size:11px;color:var(--text2)">${r.release_date||''} ${r.supplier?'· '+esc(r.supplier):''} ${r.status?'· '+r.status:''}</span>
+            ${r.logged_by_username?`<span style="background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">${esc(r.logged_by_username)}</span>`:''}
+            <div style="margin-left:auto;display:flex;gap:4px">
+              <button class="btn btn-blue" style="height:24px;padding:0 9px;font-size:11px" onclick="openEditBulk('${esc(r.bulk_id)}')">Edit bulk</button>
+              <button class="btn" style="height:24px;padding:0 7px;font-size:11px;color:var(--red)" onclick="deleteBulk('${esc(r.bulk_id)}')">🗑 Delete all</button>
+            </div>
+          </div>
+        </td>
+      </tr>`);
+      // Render each item in the bulk as an indented sub-row
+      for(const br of bulkGroup){
+        rendered.push(`<tr style="background:var(--blue-bg);opacity:.85">
+          <td style="padding-left:24px;font-size:12px" title="${esc(br.item_id)}">↳ ${esc(br.item_id)}</td>
+          <td><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((br.category||'').split(' ')[0])}</span></td>
+          <td style="font-weight:600">${(parseInt(br.qty)||0).toLocaleString()}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:11px">${br.release_date||'—'}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${br.need_by||'—'}</td>
+          <td style="color:var(--text2)">${esc(br.supplier||'—')}</td>
+          <td>${badge(br.status||'Released')}</td>
+          <td style="font-size:11px;color:var(--text3)" title="${esc(br.notes||'')}">${esc((br.notes||'').slice(0,22)+((br.notes||'').length>22?'…':''))}</td>
+          <td></td>
+        </tr>`);
+      }
+    } else if(!r.bulk_id){
+      // Regular single release
+      rendered.push(`<tr>
+        <td title="${esc(r.item_id)}"><span style="color:var(--text3);font-size:10px;margin-right:5px">${rowNum}</span>${esc(r.item_id)}</td>
+        <td><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((r.category||'').split(' ')[0])}</span></td>
+        <td style="font-weight:600">${(parseInt(r.qty)||0).toLocaleString()}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px">${r.release_date||'—'}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:${r.need_by?'var(--text)':'var(--text3)'}">${r.need_by||'—'}</td>
+        <td style="color:var(--text2)">${esc(r.supplier||'—')}</td>
+        <td>${badge(r.status||'Released')}</td>
+        <td style="font-size:11px;color:var(--text3)" title="${esc(r.notes||'')}">${esc((r.notes||'').slice(0,22)+((r.notes||'').length>22?'…':''))}</td>
+        <td style="font-size:11px;color:var(--text3)">${r.logged_by_username?'<span style="background:var(--blue-bg);color:var(--blue);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">'+esc(r.logged_by_username)+'</span>':'—'}</td>
+        <td><div style="display:flex;gap:3px">
+          <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--blue)" onclick="openEditModal('${r.id}')">Edit</button>
+          <button class="btn" style="padding:0 5px;height:24px;font-size:11px;color:var(--red)" onclick="deleteRelease('${r.id}')">✕</button>
+        </div></td>
+      </tr>`);
+    }
+    // Skip bulk items already rendered via group header
+    if(r.bulk_id && seenBulkIds.has(r.bulk_id) && rows.filter(x=>x.bulk_id===r.bulk_id)[0]?.id !== r.id) continue;
+  }
+
+  const el = document.getElementById('log-tbl');
+  el.innerHTML = rendered.length===0 ? `<tr><td colspan="9" class="empty-state">No releases logged yet.</td></tr>` : rendered.join('');
+
+  const total = rows.length;
   const pag=document.getElementById('log-pag');
-  pag.innerHTML=`<span style="color:var(--text3)">${rows.length} release${rows.length!==1?'s':''}</span>`+(totalPages<=1?'':
-    `<button class="btn" onclick="logPage--;renderLog()" ${logPage===1?'disabled':''} style="padding:0 9px">‹</button>
-     <span>Page ${logPage} of ${totalPages}</span>
-     <button class="btn" onclick="logPage++;renderLog()" ${logPage===totalPages?'disabled':''} style="padding:0 9px">›</button>`);
+  pag.innerHTML=`<span style="color:var(--text3)">${total} release${total!==1?'s':''}</span>`;
   document.querySelectorAll('#log-table th.sortable').forEach(th=>{
     th.classList.remove('sort-asc','sort-desc');
     if(th.dataset.col===logSortCol)th.classList.add(logSortDir==='asc'?'sort-asc':'sort-desc');
   });
 }
+// ─── Edit / delete bulk releases ─────────────────────────────────────────────
+function openEditBulk(bulkId){
+  const group = releases.filter(r=>r.bulk_id===bulkId);
+  if(!group.length) return;
+  const first = group[0];
+  activeModal = {type:'editbulk', bulkId};
+  document.getElementById('modal-title').textContent = '📦 Edit bulk release';
+  document.getElementById('modal-body').innerHTML = `
+    <p style="font-size:12px;color:var(--text2);margin-bottom:.9rem">Changes to date, supplier, status and notes apply to <strong>all ${group.length} items</strong> in this release. Quantities are edited per item.</p>
+    <div class="form-grid">
+      <div class="form-row"><label>Release date</label><input type="date" id="eb-date" value="${esc(first.release_date||'')}"></div>
+      <div class="form-row"><label>Need-by date</label><input type="date" id="eb-needby" value="${esc(first.need_by||'')}"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Supplier</label><input type="text" id="eb-supplier" value="${esc(first.supplier||'')}" placeholder="e.g. Anixter"></div>
+      <div class="form-row"><label>Status</label>
+        <select id="eb-status">
+          ${['Released','Delivered','Pending','Installed'].map(s=>`<option${first.status===s?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row"><label>Notes</label><input type="text" id="eb-notes" value="${esc(first.notes||'')}" placeholder="e.g. Truck #4 delivery"></div>
+    <div class="sec-label">Item quantities</div>
+    <div class="preview-table-wrap">
+      <table class="preview-table">
+        <thead><tr><th style="width:60%">Item</th><th style="width:25%">Qty released</th><th style="width:15%"></th></tr></thead>
+        <tbody>
+          ${group.map((r,i)=>`<tr>
+            <td style="font-size:12px" title="${esc(r.item_id)}">${esc(r.item_id)}</td>
+            <td><input type="number" id="eb-qty-${i}" value="${parseInt(r.qty)||0}" min="1" data-id="${r.id}" style="width:80px;height:26px;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:0 6px;background:var(--surface2);color:var(--text)"></td>
+            <td><button class="btn" style="padding:0 5px;height:24px;font-size:11px;color:var(--red)" onclick="deleteSingleFromBulk('${r.id}','${esc(bulkId)}')">✕</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-blue" id="save-btn" onclick="saveBulkEdit('${esc(bulkId)}',${group.length})">Save changes</button>
+    </div>`;
+  document.getElementById('overlay').classList.add('open');
+}
+
+async function saveBulkEdit(bulkId, count){
+  const date = document.getElementById('eb-date').value||null;
+  const needby = document.getElementById('eb-needby').value||null;
+  const supplier = document.getElementById('eb-supplier').value||null;
+  const status = document.getElementById('eb-status').value;
+  const notes = document.getElementById('eb-notes').value||null;
+  setBtnLoading('save-btn',true,'Saving...');
+  try{
+    const group = releases.filter(r=>r.bulk_id===bulkId);
+    for(let i=0;i<group.length;i++){
+      const r = group[i];
+      const qtyEl = document.getElementById(`eb-qty-${i}`);
+      const qty = qtyEl ? parseInt(qtyEl.value)||r.qty : r.qty;
+      const updated = await sbPatch('releases', r.id, {qty, release_date:date, need_by:needby, supplier, status, notes});
+      const arr = Array.isArray(updated)?updated:[updated];
+      const idx = releases.findIndex(x=>x.id===r.id);
+      if(idx>=0 && arr[0]) releases[idx] = arr[0];
+    }
+    closeModal();
+    refreshAll();
+    toast(`✓ Bulk release updated`);
+  }catch(e){ alert('Save failed: '+e); }
+  setBtnLoading('save-btn',false,'Save changes');
+}
+
+async function deleteSingleFromBulk(releaseId, bulkId){
+  if(!confirm('Remove this item from the bulk release?')) return;
+  try{
+    await sbDelete('releases', releaseId);
+    releases = releases.filter(r=>r.id!==releaseId);
+    // If no more items in bulk, close modal
+    const remaining = releases.filter(r=>r.bulk_id===bulkId);
+    if(remaining.length===0){ closeModal(); }
+    else { openEditBulk(bulkId); }
+    refreshAll();
+    toast('Item removed from bulk release');
+  }catch(e){ alert('Failed: '+e); }
+}
+
+async function deleteBulk(bulkId){
+  const group = releases.filter(r=>r.bulk_id===bulkId);
+  if(!confirm(`Delete all ${group.length} items in this bulk release? This cannot be undone.`)) return;
+  try{
+    for(const r of group) await sbDelete('releases', r.id);
+    releases = releases.filter(r=>r.bulk_id!==bulkId);
+    refreshAll();
+    toast(`Bulk release deleted (${group.length} items)`);
+  }catch(e){ alert('Delete failed: '+e); }
+}
+
 function sortLog(col){logSortCol===col?logSortDir=logSortDir==='asc'?'desc':'asc':(logSortCol=col,logSortDir=(col==='release_date'||col==='need_by')?'desc':'asc');logPage=1;renderLog();}
 function clearLogFilters(){['log-search','log-cat','log-status','log-date-from','log-date-to'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});logPage=1;renderLog();}
 
@@ -1506,10 +1641,12 @@ async function submitBulkRelease(){
   const notes = document.getElementById('br-notes').value||null;
   setBtnLoading('br-submit-btn',true,'Submitting...');
   try{
+    // Generate a shared bulk_id for all items in this release
+    const bulk_id = 'bulk_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
     const rows = bulkItems.map(item=>({
       job_id:currentJobId, item_id:item.itemId, category:item.cat,
       qty:parseInt(item.qty)||0, release_date:date, need_by:needby,
-      supplier, status, notes,
+      supplier, status, notes, bulk_id,
       logged_by_username:currentUser?currentUser.username:null
     }));
     for(let i=0;i<rows.length;i+=50){
