@@ -1580,16 +1580,38 @@ async function generateInvite() {
     );
     await sbPost('invites', {token, created_by: currentUser.id});
     const url = `${window.location.origin+window.location.pathname}?invite=${token}`;
-    await navigator.clipboard.writeText(url).catch(()=>{});
+    copyToClipboard(url);
     toast('✓ Invite link copied to clipboard');
-    openAdminPanel(); // refresh
+    openAdminPanel();
   } catch(e) { alert('Failed to generate invite: '+e); }
 }
 
 async function copyInvite(token) {
   const url = `${window.location.origin+window.location.pathname}?invite=${token}`;
-  try { await navigator.clipboard.writeText(url); toast('✓ Copied to clipboard'); }
-  catch(e) { prompt('Copy this link:', url); }
+  copyToClipboard(url);
+  toast('✓ Copied to clipboard');
+}
+
+function copyToClipboard(text) {
+  // Works on HTTP and HTTPS
+  try {
+    if(navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text);
+    } else {
+      // Fallback for HTTP
+      const el = document.createElement('textarea');
+      el.value = text;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+  } catch(e) {
+    prompt('Copy this invite link:', text);
+  }
 }
 
 async function deleteUser(userId, username) {
