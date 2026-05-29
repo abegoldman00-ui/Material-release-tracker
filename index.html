@@ -268,6 +268,7 @@ tbody tr:hover td{background:#f8f7f3}
   </div>
   <div class="sidebar-footer">
     <button class="sidebar-btn green" onclick="openNewJobModal()">+ New job</button>
+    <button class="sidebar-btn" id="bulk-release-btn" onclick="openBulkRelease()" disabled style="background:rgba(26,95,168,.4);border-color:rgba(26,95,168,.5)">📦 Bulk release</button>
     <button class="sidebar-btn" onclick="exportExcel()" id="export-btn" disabled>↓ Export Excel</button>
   </div>
 </nav>
@@ -519,6 +520,7 @@ async function selectJob(jobId){
   document.getElementById('job-tabs').style.display='block';
   document.getElementById('main-nav').style.display='flex';
   document.getElementById('export-btn').disabled=false;
+  document.getElementById('bulk-release-btn').disabled=false;
   showTab('dashboard');
   renderSidebar();
   populateCatFilters();
@@ -1396,6 +1398,132 @@ async function confirmDeleteJob(jobId){
     toast('Job deleted');
   }catch(e){alert('Delete failed: '+e);}
 }
+
+// ─── Bulk Release (Delivery Manifest) ────────────────────────────────────────
+let bulkItems = [];
+
+function openBulkRelease(){
+  if(!currentJobId){ alert('Select a job first.'); return; }
+  bulkItems = [];
+  activeModal = {type:'bulk'};
+  document.getElementById('modal-title').textContent = '📦 Bulk release — delivery manifest';
+  document.getElementById('modal-body').innerHTML = `
+    <p style="font-size:12px;color:var(--text2);margin-bottom:.9rem">Set the release details once, then add all items delivered in this shipment.</p>
+    <div class="form-grid">
+      <div class="form-row"><label>Release date</label><input type="date" id="br-date" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div class="form-row"><label>Need-by / delivery date</label><input type="date" id="br-needby"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Supplier / vendor</label><input type="text" id="br-supplier" placeholder="e.g. Anixter"></div>
+      <div class="form-row"><label>Status</label>
+        <select id="br-status"><option>Released</option><option>Delivered</option><option>Pending</option><option>Installed</option></select>
+      </div>
+    </div>
+    <div class="form-row"><label>Notes (applies to all items)</label><input type="text" id="br-notes" placeholder="e.g. Truck #4 delivery"></div>
+    <div class="sec-label">Items in this release</div>
+    <div class="search-wrap" style="margin-bottom:.5rem">
+      <input type="text" id="br-search" placeholder="Search and add items..." oninput="renderBulkSearch()" autocomplete="off">
+      <svg style="position:absolute;right:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2;pointer-events:none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <div id="br-search-results" style="margin-bottom:.6rem"></div>
+    <div id="br-items-wrap" style="display:none">
+      <div class="preview-table-wrap">
+        <table class="preview-table">
+          <thead><tr>
+            <th style="width:48%">Item</th>
+            <th style="width:18%">Remaining</th>
+            <th style="width:20%">Qty to release</th>
+            <th style="width:14%"></th>
+          </tr></thead>
+          <tbody id="br-items-tbody"></tbody>
+        </table>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-top:.4rem" id="br-item-count"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-blue" id="br-submit-btn" onclick="submitBulkRelease()" style="display:none">📦 Submit release</button>
+    </div>`;
+  document.getElementById('overlay').classList.add('open');
+}
+
+function renderBulkSearch(){
+  const q = document.getElementById('br-search').value.trim().toLowerCase();
+  const el = document.getElementById('br-search-results');
+  if(!q){ el.innerHTML=''; return; }
+  const items = currentItems();
+  const already = new Set(bulkItems.map(i=>i.itemId));
+  const matches = items.filter(i => !already.has(i.id) && i.desc.toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){ el.innerHTML='<p style="font-size:12px;color:var(--text3);padding:.3rem 0">No items found.</p>'; return; }
+  el.innerHTML = matches.map(item => {
+    const rel = itemRelQty(item.id);
+    const remaining = item.totalQty - rel;
+    return `<div class="result-item" style="padding:7px 10px" onclick="addBulkItem('${esc(item.id)}')">
+      <div style="flex:1;min-width:0">
+        <div class="result-desc" style="font-size:12px">${esc(item.desc)}</div>
+        <div class="result-cat">${esc(item.cat)} · ${remaining.toLocaleString()} remaining</div>
+      </div>
+      <button class="btn btn-blue" style="height:24px;padding:0 9px;font-size:11px;flex-shrink:0">+ Add</button>
+    </div>`;
+  }).join('');
+}
+
+function addBulkItem(itemId){
+  const item = currentItems().find(i=>i.id===itemId);
+  if(!item) return;
+  const rel = itemRelQty(item.id);
+  const remaining = item.totalQty - rel;
+  bulkItems.push({itemId, itemDesc:item.desc, cat:item.cat, qty:remaining>0?remaining:1, totalQty:item.totalQty, releasedQty:rel});
+  document.getElementById('br-search').value = '';
+  document.getElementById('br-search-results').innerHTML = '';
+  renderBulkItems();
+}
+
+function renderBulkItems(){
+  const wrap = document.getElementById('br-items-wrap');
+  const submitBtn = document.getElementById('br-submit-btn');
+  if(!bulkItems.length){ wrap.style.display='none'; submitBtn.style.display='none'; return; }
+  wrap.style.display = 'block';
+  submitBtn.style.display = 'inline-flex';
+  document.getElementById('br-item-count').textContent = `${bulkItems.length} item${bulkItems.length!==1?'s':''} in this release`;
+  document.getElementById('br-items-tbody').innerHTML = bulkItems.map((item,i) => `
+    <tr>
+      <td title="${esc(item.itemDesc)}" style="font-size:12px">${esc(item.itemDesc)}</td>
+      <td style="font-size:11px;color:var(--text3)">${(item.totalQty-item.releasedQty).toLocaleString()}</td>
+      <td><input type="number" value="${item.qty}" min="1" style="width:70px;height:26px;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:0 6px;background:var(--surface2);color:var(--text)" oninput="bulkItems[${i}].qty=parseInt(this.value)||0"></td>
+      <td><button onclick="bulkItems.splice(${i},1);renderBulkItems()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 4px">✕</button></td>
+    </tr>`).join('');
+}
+
+async function submitBulkRelease(){
+  if(!bulkItems.length){ alert('Add at least one item.'); return; }
+  const bad = bulkItems.find(i=>!i.qty||i.qty<=0);
+  if(bad){ alert(`Enter a valid quantity for "${bad.itemDesc}".`); return; }
+  const date = document.getElementById('br-date').value||null;
+  const needby = document.getElementById('br-needby').value||null;
+  const supplier = document.getElementById('br-supplier').value||null;
+  const status = document.getElementById('br-status').value;
+  const notes = document.getElementById('br-notes').value||null;
+  setBtnLoading('br-submit-btn',true,'Submitting...');
+  try{
+    const rows = bulkItems.map(item=>({
+      job_id:currentJobId, item_id:item.itemId, category:item.cat,
+      qty:parseInt(item.qty)||0, release_date:date, need_by:needby,
+      supplier, status, notes,
+      logged_by_username:currentUser?currentUser.username:null
+    }));
+    for(let i=0;i<rows.length;i+=50){
+      const batch = await sbPost('releases',rows.slice(i,i+50));
+      const arr = Array.isArray(batch)?batch:[batch];
+      releases.push(...arr);
+    }
+    closeModal();
+    refreshAll();
+    toast(`✓ ${bulkItems.length} item${bulkItems.length!==1?'s':''} released`);
+  }catch(e){ alert('Failed to submit: '+e); }
+  setBtnLoading('br-submit-btn',false,'📦 Submit release');
+}
+
 function closeModal(){document.getElementById('overlay').classList.remove('open');activeModal=null;}
 function handleOverlayClick(e){if(e.target===document.getElementById('overlay'))closeModal();}
 function setBtnLoading(id,loading,label){const b=document.getElementById(id);if(!b)return;b.disabled=loading;b.innerHTML=loading?`<span class="spinner"></span> ${label}`:label;}
