@@ -497,6 +497,27 @@ const RESET_TTL_MIN = 60; // reset links expire after this many minutes
 function emailjsReady(){ return !!(window.emailjs && EMAILJS.publicKey && EMAILJS.serviceId && EMAILJS.templateId); }
 (function(){ try{ if(window.emailjs && EMAILJS.publicKey) emailjs.init({publicKey:EMAILJS.publicKey}); }catch(e){} })();
 
+// ─── Roles & permissions ───────────────────────────────────────────────────────
+// admin       — full access, manages users & roles, sees all jobs
+// pm          — Project Manager: create/edit jobs + release material (assigned jobs)
+// coordinator — Job Coordinator: release material only (assigned jobs)
+// customer    — view only (assigned jobs)
+// member      — legacy role, treated as coordinator until reassigned
+const ROLES = ['admin','pm','coordinator','customer'];
+const ROLE_LABELS = { admin:'Admin', pm:'Project Manager', coordinator:'Job Coordinator', customer:'Customer', member:'Job Coordinator' };
+function userRole(){ return currentUser ? (currentUser.role||'') : ''; }
+function can(action){
+  const r = userRole();
+  switch(action){
+    case 'manageUsers': return r==='admin';
+    case 'createJob':
+    case 'editJob':     return r==='admin' || r==='pm';
+    case 'release':     return r==='admin' || r==='pm' || r==='coordinator' || r==='member';
+    case 'seeAllJobs':  return r==='admin';
+    default: return false;
+  }
+}
+
 async function sbGet(table,params=''){const r=await fetch(`${SB_URL}/rest/v1/${table}?${params}`,{headers:HDR});if(!r.ok)throw await r.text();return r.json();}
 async function sbPost(table,body){const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:HDR,body:JSON.stringify(body)});if(!r.ok)throw await r.text();return r.json();}
 async function sbPatch(table,id,body){const r=await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:'PATCH',headers:{...HDR,'Prefer':'return=representation'},body:JSON.stringify(body)});if(!r.ok)throw await r.text();return r.json();}
@@ -715,7 +736,7 @@ function jobItemHtml(job){
   const items=jobItems[job.id]||[];
   const pct=job.id===currentJobId?jobPct(job.id):0;
   const active=job.id===currentJobId?'active':'';
-  const manageBtn=(currentUser&&currentUser.role==='admin')?`<button onclick="event.stopPropagation();openManageJob('${esc(job.id)}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0" title="Manage job">⋯</button>`:'';
+  const manageBtn=can('editJob')?`<button onclick="event.stopPropagation();openManageJob('${esc(job.id)}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0" title="Manage job">⋯</button>`:'';
   return`<div class="job-item ${active}" onclick="selectJob('${esc(job.id)}')">
     <div class="job-item-info">
       <div class="job-item-name">${esc(job.name)}</div>
@@ -818,7 +839,7 @@ function renderSearch(){
       <div style="flex:1;min-width:0"><div class="result-desc">${esc(item.desc)}</div><div class="result-cat">${esc(item.cat)}</div></div>
       <div class="result-mini-bar"><div class="result-mini-fill" style="width:${pct}%"></div></div>
       <span class="result-pct">${pct}%</span>${badge(itemStatus(item))}
-      <button class="btn btn-blue" style="height:26px;padding:0 9px;font-size:11px" onclick="event.stopPropagation();openModal('${esc(item.id)}')">+ Release</button>
+      ${can('release')?`<button class="btn btn-blue" style="height:26px;padding:0 9px;font-size:11px" onclick="event.stopPropagation();openModal('${esc(item.id)}')">+ Release</button>`:''}
     </div>`;
   }).join('');
 }
@@ -892,10 +913,10 @@ function renderLog(){
             <span style="font-size:11px;font-weight:600;color:var(--blue)">📦 Bulk release — ${bulkGroup.length} items · ${totalQty.toLocaleString()} units total</span>
             <span style="font-size:11px;color:var(--text2)">${r.release_date||''} ${r.supplier?'· '+esc(r.supplier):''} ${r.status?'· '+r.status:''}</span>
             ${r.logged_by_username?`<span style="background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">${esc(r.logged_by_username)}</span>`:''}
-            <div style="margin-left:auto;display:flex;gap:4px">
+            ${can('release')?`<div style="margin-left:auto;display:flex;gap:4px">
               <button class="btn btn-blue" style="height:24px;padding:0 9px;font-size:11px" onclick="openEditBulk('${esc(r.bulk_id)}')">Edit bulk</button>
               <button class="btn" style="height:24px;padding:0 7px;font-size:11px;color:var(--red)" onclick="deleteBulk('${esc(r.bulk_id)}')">🗑 Delete all</button>
-            </div>
+            </div>`:''}
           </div>
         </td>
       </tr>`);
@@ -925,10 +946,10 @@ function renderLog(){
         <td>${badge(r.status||'Released')}</td>
         <td style="font-size:11px;color:var(--text3)" title="${esc(r.notes||'')}">${esc((r.notes||'').slice(0,22)+((r.notes||'').length>22?'…':''))}</td>
         <td style="font-size:11px;color:var(--text3)">${r.logged_by_username?'<span style="background:var(--blue-bg);color:var(--blue);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">'+esc(r.logged_by_username)+'</span>':'—'}</td>
-        <td><div style="display:flex;gap:3px">
+        <td>${can('release')?`<div style="display:flex;gap:3px">
           <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--blue)" onclick="openEditModal('${r.id}')">Edit</button>
           <button class="btn" style="padding:0 5px;height:24px;font-size:11px;color:var(--red)" onclick="deleteRelease('${r.id}')">✕</button>
-        </div></td>
+        </div>`:''}</td>
       </tr>`);
     }
     // Skip bulk items already rendered via group header
@@ -1057,6 +1078,7 @@ function buildItemModal(item,editingId=null){
   const rels=itemReleases(item.id);
   const rel=itemRelQty(item.id);
   const remaining=item.totalQty-rel;
+  const editable=can('release');
   const histHtml=rels.length===0?'<p style="font-size:12px;color:var(--text3);margin-bottom:.6rem">No releases logged yet.</p>':
     rels.map(r=>{
       if(r.id===editingId){
@@ -1081,10 +1103,10 @@ function buildItemModal(item,editingId=null){
         <div class="release-item-head">
           <span style="font-size:13px;font-weight:600;flex:1">${(parseInt(r.qty)||0).toLocaleString()} units</span>
           ${badge(r.status||'Released')}
-          <div style="display:flex;gap:3px;margin-left:auto">
+          ${editable?`<div style="display:flex;gap:3px;margin-left:auto">
             <button class="btn" style="padding:0 7px;height:24px;font-size:11px;color:var(--blue)" onclick="buildItemModal(currentItems().find(i=>i.id==='${esc(item.id)}'),'${r.id}')">Edit</button>
             <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--red)" onclick="deleteRelease('${r.id}')">✕</button>
-          </div>
+          </div>`:''}
         </div>
         <div class="release-meta">
           ${r.release_date?`<span>Released: ${r.release_date}</span>`:''}
@@ -1101,6 +1123,7 @@ function buildItemModal(item,editingId=null){
       <div class="mini-metric"><div class="mini-metric-label">Remaining</div><div class="mini-metric-value">${remaining.toLocaleString()}</div></div>
     </div>
     <div class="sec-label">Release history</div>${histHtml}
+    ${editable?`
     <div class="sec-label">Log new release</div>
     <div class="form-grid">
       <div class="form-row"><label>Qty to release</label><input type="number" id="f-qty" placeholder="e.g. 500" min="1"></div>
@@ -1115,7 +1138,10 @@ function buildItemModal(item,editingId=null){
     <div class="modal-actions">
       <button class="btn" onclick="closeModal()">Cancel</button>
       <button class="btn btn-blue" id="save-btn" onclick="saveNewRelease('${esc(item.id)}','${esc(item.cat)}')">+ Log release</button>
-    </div>`;
+    </div>`:`
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Close</button>
+    </div>`}`;
 }
 
 function openEditModal(releaseId){
@@ -1143,6 +1169,7 @@ function openEditModal(releaseId){
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 async function saveNewRelease(itemId,category){
+  if(!can('release')){ toast('You do not have permission to release material.'); return; }
   const qty=parseInt(document.getElementById('f-qty').value);
   if(!qty||qty<=0){alert('Enter a valid quantity.');return;}
   setBtnLoading('save-btn',true,'Saving...');
@@ -1526,6 +1553,7 @@ function inferCategory(name){
 }
 
 async function createJob(){
+  if(!can('createJob')){ toast('You do not have permission to create jobs.'); return; }
   const name=(document.getElementById('nj-name')||{}).value||'';
   if(!name.trim()){alert('Enter a job name.');return;}
 
@@ -1574,6 +1602,7 @@ async function createJob(){
 
 // ─── Manage job modal (delete job / add items) ────────────────────────────────
 function openManageJob(jobId){
+  if(!can('editJob')){ toast('You do not have permission to edit jobs.'); return; }
   const job=jobs.find(j=>j.id===jobId);
   if(!job)return;
   activeModal={type:'managejob',jobId};
@@ -1851,6 +1880,7 @@ async function confirmDeleteJob(jobId){
 let bulkItems = [];
 
 function openBulkRelease(){
+  if(!can('release')){ toast('You do not have permission to release material.'); return; }
   if(!currentJobId){ alert('Select a job first.'); return; }
   bulkItems = [];
   activeModal = {type:'bulk'};
@@ -2224,13 +2254,16 @@ function showApp() {
   document.getElementById('user-badge').style.display = 'flex';
   document.getElementById('user-avatar').textContent = currentUser.username.slice(0,2).toUpperCase();
   document.getElementById('user-name-display').textContent = currentUser.username;
-  document.getElementById('user-role-display').textContent = currentUser.role === 'admin' ? 'Admin' : 'Member';
-  const isAdmin = currentUser.role === 'admin';
-  document.getElementById('admin-btn').style.display = isAdmin ? 'inline-flex' : 'none';
-  // All users can create jobs (a member is auto-assigned to jobs they create)
-  document.getElementById('new-job-btn').style.display = 'flex';
-  document.getElementById('no-job-create-btn').style.display = '';
-  document.getElementById('no-job-sub').textContent = 'Choose a job from the sidebar, or create a new one to get started.';
+  document.getElementById('user-role-display').textContent = ROLE_LABELS[currentUser.role] || 'Member';
+  // Role-based UI gating
+  document.getElementById('admin-btn').style.display = can('manageUsers') ? 'inline-flex' : 'none';
+  document.getElementById('bulk-release-btn').style.display = can('release') ? 'flex' : 'none';
+  const showCreate = can('createJob');
+  document.getElementById('new-job-btn').style.display = showCreate ? 'flex' : 'none';
+  document.getElementById('no-job-create-btn').style.display = showCreate ? '' : 'none';
+  document.getElementById('no-job-sub').textContent = showCreate
+    ? 'Choose a job from the sidebar, or create a new one to get started.'
+    : 'Select a job from the sidebar to view its materials and releases.';
 }
 
 async function submitLogin() {
@@ -2275,7 +2308,7 @@ async function submitRegister() {
     const invites = await sbGet('invites', `token=eq.${encodeURIComponent(token)}&select=id,used_at`);
     if(!invites.length || invites[0].used_at) { errEl.textContent='Invalid or already used invite link.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Create account'; return; }
     // Create user
-    const newUser = await sbPost('users', {username, email: email||null, password_hash: hash, role: 'member'});
+    const newUser = await sbPost('users', {username, email: email||null, password_hash: hash, role: 'customer'});
     const user = Array.isArray(newUser) ? newUser[0] : newUser;
     // Mark invite used
     await sbPatch('invites', invites[0].id, {used_at: new Date().toISOString(), used_by: user.id});
@@ -2325,7 +2358,12 @@ async function openAdminPanel() {
             <div class="admin-user-name">${esc(u.username)} ${u.id===currentUser.id?'<span style="font-size:10px;color:var(--text3)">(you)</span>':''}</div>
             <div class="admin-user-meta">Joined ${new Date(u.created_at).toLocaleDateString()} ${u.email?'· '+esc(u.email):'· <span style="color:var(--amber)">no email</span>'}</div>
           </div>
-          <span class="role-badge ${u.role==='admin'?'role-admin':'role-member'}">${u.role}</span>
+          ${u.id===currentUser.id
+            ? `<span class="role-badge role-admin">${ROLE_LABELS[u.role]||u.role}</span>`
+            : `<select onchange="changeUserRole('${u.id}',this.value)" title="Set this user's role" style="height:24px;font-size:11px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text);padding:0 5px">
+                 ${ROLES.map(rv=>`<option value="${rv}"${u.role===rv?' selected':''}>${ROLE_LABELS[rv]}</option>`).join('')}
+                 ${ROLES.includes(u.role)?'':`<option value="${esc(u.role)}" selected>${esc(u.role)} (legacy)</option>`}
+               </select>`}
           <button class="btn" style="height:24px;font-size:11px" onclick="setUserEmail('${u.id}','${esc(u.username)}','${esc(u.email||'')}')" title="Set email for password resets">✉ Email</button>
           <button class="btn" style="height:24px;font-size:11px" onclick="resetUserPassword('${u.id}','${esc(u.username)}')" title="Set a new password for this user">Reset PW</button>
           ${u.id!==currentUser.id?`<button class="btn" style="height:24px;font-size:11px;color:var(--red)" onclick="deleteUser('${u.id}','${esc(u.username)}')">Remove</button>`:''}
@@ -2397,6 +2435,15 @@ function copyToClipboard(text) {
   } catch(e) {
     prompt('Copy this invite link:', text);
   }
+}
+
+async function changeUserRole(userId, role){
+  if(!ROLES.includes(role)) return;
+  try{
+    await sbPatch('users', userId, {role});
+    toast('✓ Role updated');
+    openAdminPanel();
+  }catch(e){ alert('Failed to update role: '+e); }
 }
 
 async function adminAssign(userId, jobId){
