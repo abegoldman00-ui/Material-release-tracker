@@ -77,7 +77,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .layout{display:flex;flex:1;min-height:0}
 .sidebar{width:var(--sidebar);background:var(--sidebar-bg);flex-shrink:0;display:flex;flex-direction:column;min-height:100vh;position:sticky;top:0;transition:background .2s}
 .sidebar-logo{padding:1.1rem 1.1rem .9rem;border-bottom:1px solid var(--sidebar-border);display:flex;flex-direction:column;align-items:flex-start}
-.sidebar-logo img{width:120px;height:auto;margin-bottom:.5rem;filter:brightness(0) invert(1);opacity:.95}
+.sidebar-logo img{width:118px;height:auto;margin-bottom:.6rem;background:#fff;padding:9px 11px;border-radius:9px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
 .sidebar-logo-tagline{font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:1px}
 .sidebar-app-label{font-size:10px;color:rgba(255,255,255,.25);margin-top:.35rem;letter-spacing:.04em}
 .sidebar-section{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.35);padding:.85rem 1.1rem .35rem}
@@ -90,6 +90,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .job-item-sub{font-size:11px;color:rgba(255,255,255,.4);margin-top:1px}
 .job-item-pct{font-size:11px;font-weight:600;color:rgba(255,255,255,.5);flex-shrink:0}
 .job-item.active .job-item-pct{color:#a8d0f8}
+.cust-header{display:flex;align-items:center;gap:6px;padding:.5rem 1.1rem .3rem;cursor:pointer;user-select:none}
+.cust-header:hover .cust-name{color:rgba(255,255,255,.85)}
+.cust-caret{font-size:9px;color:rgba(255,255,255,.4);width:9px;flex-shrink:0}
+.cust-name{flex:1;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cust-count{font-size:10px;color:rgba(255,255,255,.3);flex-shrink:0}
 .sidebar-footer{padding:.75rem 1.1rem;border-top:1px solid var(--sidebar-border);display:flex;flex-direction:column;gap:6px}
 .sidebar-btn{width:100%;height:30px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:6px;color:#fff;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .12s}
 .sidebar-btn:hover{background:rgba(255,255,255,.18)}
@@ -217,6 +222,52 @@ tbody tr:hover td{background:#f8f7f3}
 .parse-preview-item{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border);color:var(--text2)}
 .parse-preview-item:last-child{border-bottom:none}
 
+/* ───────────── Polish pass ───────────── */
+/* Soft depth + hover lift on cards */
+.metric,.cat-card{box-shadow:0 1px 2px rgba(20,18,15,.04);transition:transform .15s,box-shadow .15s,border-color .15s}
+.metric:hover,.cat-card:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(20,18,15,.08);border-color:var(--border2)}
+.tbl-wrap,.modal,#activity-feed{box-shadow:0 1px 3px rgba(20,18,15,.05)}
+[data-theme="dark"] .metric,[data-theme="dark"] .cat-card,[data-theme="dark"] .tbl-wrap,[data-theme="dark"] #activity-feed{box-shadow:0 1px 2px rgba(0,0,0,.3)}
+[data-theme="dark"] .metric:hover,[data-theme="dark"] .cat-card:hover{box-shadow:0 5px 18px rgba(0,0,0,.45)}
+
+/* Headline KPI card gets a gentle brand tint */
+.summary-grid .metric:first-child{background:linear-gradient(155deg,var(--blue-bg),var(--surface) 62%);border-color:var(--blue-border)}
+
+/* Progress bars: subtle gradient */
+.bar-fill,.result-mini-fill{background:linear-gradient(90deg,var(--blue),#2f78c4)}
+[data-theme="dark"] .bar-fill,[data-theme="dark"] .result-mini-fill{background:linear-gradient(90deg,#3d82cf,#5aa0e6)}
+
+/* Sticky header separation */
+.app-header{box-shadow:0 1px 0 var(--border),0 3px 10px rgba(20,18,15,.035)}
+[data-theme="dark"] .app-header{box-shadow:0 1px 0 var(--border),0 3px 12px rgba(0,0,0,.35)}
+
+/* Button press feedback */
+.btn:active,.sidebar-btn:active,.login-submit:active,.nav-btn:active{transform:translateY(1px)}
+.sidebar-btn{border-radius:7px}
+
+/* Theme-aware fixes for previously hardcoded light colors */
+tbody tr:hover td{background:var(--surface2)}
+th.sortable:hover{background:var(--border)}
+[data-theme="dark"] .btn-blue:hover{background:var(--blue-border)}
+[data-theme="dark"] .btn-green:hover{background:var(--green-border)}
+[data-theme="dark"] .b-installed{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
+
+/* Search/result rows lift on hover */
+.result-item:hover{box-shadow:0 2px 10px rgba(26,95,168,.09)}
+
+/* Modal entrance + soft backdrop blur */
+.overlay{backdrop-filter:blur(2px)}
+.overlay.open .modal{animation:modalIn .18s ease}
+@keyframes modalIn{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
+
+/* Refined thin scrollbars */
+*{scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px;border:3px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--text3);background-clip:padding-box}
+::-webkit-scrollbar-track{background:transparent}
+.sidebar-jobs{scrollbar-color:rgba(255,255,255,.18) transparent}
+
 @media(max-width:700px){.sidebar{width:180px}.summary-grid{grid-template-columns:1fr 1fr}.cat-grid{grid-template-columns:1fr 1fr}.content{padding:1rem}}
 </style>
 </head>
@@ -267,9 +318,10 @@ tbody tr:hover td{background:#f8f7f3}
     <div style="padding:1rem 1.1rem;font-size:12px;color:rgba(255,255,255,.3)"><span class="spinner" style="border-top-color:rgba(255,255,255,.4);border-color:rgba(255,255,255,.15)"></span></div>
   </div>
   <div class="sidebar-footer">
-    <button class="sidebar-btn green" onclick="openNewJobModal()">+ New job</button>
+    <button class="sidebar-btn green" id="new-job-btn" onclick="openNewJobModal()">+ New job</button>
     <button class="sidebar-btn" id="bulk-release-btn" onclick="openBulkRelease()" disabled style="background:rgba(26,95,168,.4);border-color:rgba(26,95,168,.5)">📦 Bulk release</button>
     <button class="sidebar-btn" onclick="exportExcel()" id="export-btn" disabled>↓ Export Excel</button>
+    <button class="sidebar-btn" onclick="exportPdf()" id="export-pdf-btn" disabled>📄 Export PDF report</button>
   </div>
 </nav>
 
@@ -277,7 +329,10 @@ tbody tr:hover td{background:#f8f7f3}
 <div class="main-area">
   <header class="app-header">
     <div style="display:flex;align-items:center;gap:12px">
-      <div class="header-job" id="header-job-name">Select a job</div>
+      <div>
+        <div class="header-job" id="header-job-name">Select a job</div>
+        <div id="header-customer" style="font-size:12px;color:var(--text3);margin-top:1px"></div>
+      </div>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <div style="display:flex;align-items:center">
@@ -307,8 +362,8 @@ tbody tr:hover td{background:#f8f7f3}
     <div class="no-job" id="no-job-state">
       <div class="no-job-icon">📋</div>
       <div class="no-job-title">No job selected</div>
-      <div class="no-job-sub">Choose a job from the sidebar, or create a new one to get started.</div>
-      <button class="btn btn-blue" onclick="openNewJobModal()">+ Create first job</button>
+      <div class="no-job-sub" id="no-job-sub">Choose a job from the sidebar, or create a new one to get started.</div>
+      <button class="btn btn-blue" id="no-job-create-btn" onclick="openNewJobModal()">+ Create first job</button>
     </div>
 
     <!-- Job tabs (hidden until job selected) -->
@@ -322,6 +377,8 @@ tbody tr:hover td{background:#f8f7f3}
           <svg style="position:absolute;right:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2;pointer-events:none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </div>
         <div id="search-results" class="result-list"></div>
+        <div style="font-size:13px;font-weight:600;margin:1.4rem 0 .55rem">Recent activity</div>
+        <div id="activity-feed" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.4rem .9rem"><div style="font-size:12px;color:var(--text3);padding:.5rem 0">Loading…</div></div>
       </div>
 
       <div id="tab-detail" class="tab-content">
@@ -424,6 +481,8 @@ let activeModal = null;
 let detailPage=1, logPage=1;
 const PAGE=25;
 let logSortCol='release_date', logSortDir='desc';
+let collapsedCustomers={};   // customer name -> true if collapsed in sidebar
+let newJobAssignees=new Set(); // user ids checked in the new-job modal
 
 // ─── Derived helpers ─────────────────────────────────────────────────────────
 function currentItems(){ return (jobItems[currentJobId]||[]).map(i=>({id:i.item_name,desc:i.item_name,cat:i.category,totalQty:i.total_qty,dbId:i.id})); }
@@ -458,6 +517,45 @@ function setSyncStatus(state,text){
   document.getElementById('sync-label').textContent=text;
 }
 
+// ─── Activity feed ─────────────────────────────────────────────────────────────
+function timeAgo(ts){
+  if(!ts)return'';
+  const diff=Math.floor((Date.now()-new Date(ts).getTime())/1000);
+  if(diff<60)return'just now';
+  const m=Math.floor(diff/60); if(m<60)return m+' min ago';
+  const h=Math.floor(m/60); if(h<24)return h+' hr ago';
+  const d=Math.floor(h/24); if(d<7)return d+' day'+(d>1?'s':'')+' ago';
+  return new Date(ts).toLocaleDateString();
+}
+
+async function logActivity(action,detail){
+  if(!currentJobId)return;
+  try{
+    const job=jobs.find(j=>j.id===currentJobId);
+    await sbPost('activity',{
+      job_id:currentJobId, job_name:job?job.name:null,
+      user_id:currentUser?currentUser.id:null,
+      username:currentUser?currentUser.username:null,
+      action, detail
+    });
+  }catch(e){ /* non-fatal — never block a release on activity logging */ }
+}
+
+async function loadActivity(){
+  const el=document.getElementById('activity-feed');
+  if(!el||!currentJobId)return;
+  try{
+    const acts=await sbGet('activity',`job_id=eq.${encodeURIComponent(currentJobId)}&order=created_at.desc&limit=15`);
+    if(!acts.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:.5rem 0">No activity yet.</div>'; return; }
+    const icons={release_logged:'➕',bulk_released:'📦',release_edited:'✏️',bulk_edited:'✏️',release_deleted:'🗑',bulk_deleted:'🗑'};
+    el.innerHTML=acts.map((a,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:.5rem 0;${i<acts.length-1?'border-bottom:1px solid var(--border)':''}">
+      <span style="font-size:14px;flex-shrink:0">${icons[a.action]||'•'}</span>
+      <div style="flex:1;min-width:0;font-size:12px;color:var(--text2);line-height:1.4"><span style="font-weight:600;color:var(--text)">${esc(a.username||'Someone')}</span> ${esc(a.detail||a.action)}</div>
+      <span style="font-size:11px;color:var(--text3);flex-shrink:0;white-space:nowrap">${timeAgo(a.created_at)}</span>
+    </div>`).join('');
+  }catch(e){ el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:.5rem 0">Could not load activity.</div>'; }
+}
+
 async function loadAll(){
   setSyncStatus('syncing','Connecting...');
   try{
@@ -465,11 +563,20 @@ async function loadAll(){
     const jobsData = await sbGet('jobs','order=created_at.asc');
     jobs = jobsData;
 
-    // Seed 70HY if not exists
-    if(!jobs.find(j=>j.id===DEFAULT_JOB_ID)){
+    // Seed 70HY if not exists (admins only — members just see assigned jobs)
+    if(currentUser && currentUser.role==='admin' && !jobs.find(j=>j.id===DEFAULT_JOB_ID)){
       await seedDefaultJob();
       const refreshed = await sbGet('jobs','order=created_at.asc');
       jobs = refreshed;
+    }
+
+    // Members only see jobs they're assigned to
+    if(currentUser && currentUser.role!=='admin'){
+      try{
+        const asn = await sbGet('job_assignments', `user_id=eq.${currentUser.id}&select=job_id`);
+        const allowed = new Set(asn.map(a=>a.job_id));
+        jobs = jobs.filter(j=>allowed.has(j.id));
+      }catch(e){ console.error('assignment load failed',e); }
     }
 
     // Load all job_items
@@ -516,15 +623,18 @@ async function selectJob(jobId){
   }
   const job=jobs.find(j=>j.id===jobId);
   document.getElementById('header-job-name').textContent=job?job.name:'Job';
+  document.getElementById('header-customer').textContent=job&&job.customer?job.customer:'';
   document.getElementById('no-job-state').style.display='none';
   document.getElementById('job-tabs').style.display='block';
   document.getElementById('main-nav').style.display='flex';
   document.getElementById('export-btn').disabled=false;
+  document.getElementById('export-pdf-btn').disabled=false;
   document.getElementById('bulk-release-btn').disabled=false;
   showTab('dashboard');
   renderSidebar();
   populateCatFilters();
   refreshAll();
+  loadActivity();
 }
 
 setInterval(async()=>{
@@ -533,26 +643,58 @@ setInterval(async()=>{
     releases=await sbGet('releases',`job_id=eq.${encodeURIComponent(currentJobId)}&order=created_at.asc&limit=5000`);
     setSyncStatus('ok','Live');
     refreshAll();
+    loadActivity();
   }catch(e){setSyncStatus('err','Sync error');}
 },30000);
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
+function jobItemHtml(job){
+  const items=jobItems[job.id]||[];
+  const pct=job.id===currentJobId?jobPct(job.id):0;
+  const active=job.id===currentJobId?'active':'';
+  const manageBtn=(currentUser&&currentUser.role==='admin')?`<button onclick="event.stopPropagation();openManageJob('${esc(job.id)}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0" title="Manage job">⋯</button>`:'';
+  return`<div class="job-item ${active}" onclick="selectJob('${esc(job.id)}')">
+    <div class="job-item-info">
+      <div class="job-item-name">${esc(job.name)}</div>
+      <div class="job-item-sub">${items.length} items</div>
+    </div>
+    <span class="job-item-pct">${pct}%</span>
+    ${manageBtn}
+  </div>`;
+}
+
 function renderSidebar(){
   const el=document.getElementById('sidebar-jobs');
   if(!jobs.length){el.innerHTML='<div style="padding:.75rem 1.1rem;font-size:12px;color:rgba(255,255,255,.3)">No jobs yet</div>';return;}
-  el.innerHTML=jobs.map(job=>{
-    const items=jobItems[job.id]||[];
-    const pct=job.id===currentJobId?jobPct(job.id):0;
-    const active=job.id===currentJobId?'active':'';
-    return`<div class="job-item ${active}" onclick="selectJob('${esc(job.id)}')">
-      <div class="job-item-info">
-        <div class="job-item-name">${esc(job.name)}</div>
-        <div class="job-item-sub">${items.length} items</div>
+  // Group jobs by customer
+  const groups={};
+  for(const job of jobs){
+    const key=(job.customer&&job.customer.trim())?job.customer.trim():'Other';
+    (groups[key]=groups[key]||[]).push(job);
+  }
+  const keys=Object.keys(groups).sort((a,b)=>a==='Other'?1:b==='Other'?-1:a.localeCompare(b));
+  // If every job is "Other" (no customers set), render a flat list
+  if(keys.length===1&&keys[0]==='Other'){
+    el.innerHTML=groups['Other'].map(jobItemHtml).join('');
+    return;
+  }
+  el.innerHTML=keys.map(key=>{
+    const collapsed=collapsedCustomers[key];
+    const list=groups[key];
+    return`<div class="cust-group">
+      <div class="cust-header" onclick="toggleCustomer('${esc(key).replace(/'/g,"\\'")}')">
+        <span class="cust-caret">${collapsed?'▸':'▾'}</span>
+        <span class="cust-name">${esc(key)}</span>
+        <span class="cust-count">${list.length}</span>
       </div>
-      <span class="job-item-pct">${pct}%</span>
-      <button onclick="event.stopPropagation();openManageJob('${esc(job.id)}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0" title="Manage job">⋯</button>
+      <div class="cust-jobs" style="display:${collapsed?'none':'block'}">${list.map(jobItemHtml).join('')}</div>
     </div>`;
   }).join('');
+}
+
+function toggleCustomer(key){
+  collapsedCustomers[key]=!collapsedCustomers[key];
+  renderSidebar();
 }
 
 function populateCatFilters(){
@@ -803,6 +945,7 @@ async function saveBulkEdit(bulkId, count){
     }
     closeModal();
     refreshAll();
+    logActivity('bulk_edited',`edited a bulk release (${count} item${count!==1?'s':''})`).then(loadActivity);
     toast(`✓ Bulk release updated`);
   }catch(e){ alert('Save failed: '+e); }
   setBtnLoading('save-btn',false,'Save changes');
@@ -826,10 +969,12 @@ async function deleteBulk(bulkId){
   const group = releases.filter(r=>r.bulk_id===bulkId);
   if(!confirm(`Delete all ${group.length} items in this bulk release? This cannot be undone.`)) return;
   try{
+    const n=group.length;
     for(const r of group) await sbDelete('releases', r.id);
     releases = releases.filter(r=>r.bulk_id!==bulkId);
     refreshAll();
-    toast(`Bulk release deleted (${group.length} items)`);
+    logActivity('bulk_deleted',`deleted a bulk release (${n} item${n!==1?'s':''})`).then(loadActivity);
+    toast(`Bulk release deleted (${n} items)`);
   }catch(e){ alert('Delete failed: '+e); }
 }
 
@@ -951,6 +1096,7 @@ async function saveNewRelease(itemId,category){
     const item=currentItems().find(i=>i.id===itemId);
     if(item)buildItemModal(item);
     refreshAll();
+    logActivity('release_logged',`logged ${qty.toLocaleString()}× ${itemId}`).then(loadActivity);
     toast('✓ Release logged');
   }catch(e){alert('Save failed: '+e);}
   setBtnLoading('save-btn',false,'+ Log release');
@@ -973,6 +1119,8 @@ async function saveEdit(releaseId,itemId){
     if(itemId){const item=currentItems().find(i=>i.id===itemId);if(item)buildItemModal(item);}
     else closeModal();
     refreshAll();
+    const rel=releases[idx];
+    logActivity('release_edited',`edited a release of ${rel?rel.item_id:''}`).then(loadActivity);
     toast('✓ Release updated');
   }catch(e){alert('Update failed: '+e);}
   setBtnLoading('save-btn',false,'Save changes');
@@ -981,10 +1129,12 @@ async function saveEdit(releaseId,itemId){
 async function deleteRelease(releaseId){
   if(!confirm('Delete this release?'))return;
   try{
+    const rel=releases.find(r=>r.id===releaseId);
     await sbDelete('releases',releaseId);
     releases=releases.filter(r=>r.id!==releaseId);
     closeModal();
     refreshAll();
+    logActivity('release_deleted',`deleted a release of ${rel?rel.item_id:''}`).then(loadActivity);
     toast('Release deleted');
   }catch(e){alert('Delete failed: '+e);}
 }
@@ -994,10 +1144,15 @@ let parsedBomItems = []; // holds current preview items
 
 function openNewJobModal(){
   parsedBomItems = [];
+  newJobAssignees = new Set();
   activeModal={type:'newjob'};
   document.getElementById('modal-title').textContent='Create new job';
   document.getElementById('modal-body').innerHTML=`
-    <div class="form-row"><label>Job name / number</label><input type="text" id="nj-name" placeholder="e.g. 45-Main-Street, Harbor Project..."></div>
+    <div class="form-grid">
+      <div class="form-row"><label>Job name / number</label><input type="text" id="nj-name" placeholder="e.g. 45-Main-Street, Harbor Project..."></div>
+      <div class="form-row"><label>Customer (optional)</label><input type="text" id="nj-customer" list="customer-list" placeholder="e.g. Turner Construction"><datalist id="customer-list">${customerNames().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
+    </div>
+    ${currentUser&&currentUser.role==='admin'?`<div class="form-row"><label>Assign team members (optional)</label><div id="nj-members" style="font-size:12px;color:var(--text3)">Loading members…</div></div>`:''}
     <div class="form-row">
       <label>BOM — drop a file or paste text</label>
       <div style="display:flex;gap:6px;margin-bottom:8px">
@@ -1046,6 +1201,24 @@ function openNewJobModal(){
       <button class="btn btn-blue" id="save-btn" onclick="createJob()">Create job</button>
     </div>`;
   document.getElementById('overlay').classList.add('open');
+  if(currentUser&&currentUser.role==='admin') loadNewJobMembers();
+}
+
+function customerNames(){
+  return [...new Set(jobs.map(j=>j.customer).filter(c=>c&&c.trim()))].sort();
+}
+
+async function loadNewJobMembers(){
+  const el=document.getElementById('nj-members');
+  if(!el)return;
+  try{
+    const members=await sbGet('users',`role=eq.member&order=username.asc&select=id,username`);
+    if(!members.length){ el.innerHTML='<span style="color:var(--text3)">No member accounts yet. Invite teammates from the Admin panel.</span>'; return; }
+    el.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:6px">`+members.map(m=>
+      `<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:3px 10px;cursor:pointer">
+        <input type="checkbox" onchange="this.checked?newJobAssignees.add('${m.id}'):newJobAssignees.delete('${m.id}')">${esc(m.username)}</label>`
+    ).join('')+`</div>`;
+  }catch(e){ el.innerHTML='<span style="color:var(--text3)">Could not load members.</span>'; }
 }
 
 function setBomTab(tab){
@@ -1305,13 +1478,24 @@ async function createJob(){
 
   const finalItems=blankVisible?[]:parsedBomItems.filter(i=>i.name&&i.qty>0);
 
+  const customer=((document.getElementById('nj-customer')||{}).value||'').trim()||null;
+
   setBtnLoading('save-btn',true,'Creating...');
   try{
     const jobId='job-'+Date.now();
-    await sbPost('jobs',{id:jobId,name:name.trim()});
+    try{
+      await sbPost('jobs',{id:jobId,name:name.trim(),customer});
+    }catch(err){
+      // jobs.customer column may not exist yet (migration not run) — create without it
+      await sbPost('jobs',{id:jobId,name:name.trim()});
+    }
     if(finalItems.length>0){
       const rows=finalItems.map(i=>({job_id:jobId,item_name:i.name,category:i.category||inferCategory(i.name),total_qty:parseInt(i.qty)||0}));
       for(let i=0;i<rows.length;i+=50) await sbPost('job_items',rows.slice(i,i+50));
+    }
+    if(newJobAssignees.size){
+      const asn=[...newJobAssignees].map(uid=>({job_id:jobId,user_id:uid}));
+      try{ await sbPost('job_assignments',asn); }catch(e){ console.error('assignment insert failed',e); }
     }
     const allJobs=await sbGet('jobs','order=created_at.asc');
     jobs=allJobs;
@@ -1336,7 +1520,19 @@ function openManageJob(jobId){
   document.getElementById('modal-body').innerHTML=`
     <div style="margin-bottom:1rem">
       <div class="sec-label">Job info</div>
-      <div style="font-size:13px;color:var(--text2)">${items.length} line items &nbsp;·&nbsp; ${releases.filter(r=>r.job_id===jobId).length} releases logged</div>
+      <div class="form-grid">
+        <div class="form-row"><label>Job name</label><input type="text" id="mj-name" value="${esc(job.name)}"></div>
+        <div class="form-row"><label>Customer</label><input type="text" id="mj-customer" list="customer-list" value="${esc(job.customer||'')}" placeholder="e.g. Turner Construction"><datalist id="customer-list">${customerNames().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:.2rem">
+        <button class="btn btn-blue" id="mj-save-info-btn" style="height:28px;font-size:12px" onclick="saveJobInfo('${esc(jobId)}')">Save job info</button>
+        <span style="font-size:12px;color:var(--text3)">${items.length} line items · ${releases.filter(r=>r.job_id===jobId).length} releases logged</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom:1rem">
+      <div class="sec-label">Assigned team members</div>
+      <div id="mj-members" style="font-size:12px;color:var(--text3)">Loading…</div>
     </div>
 
     <div style="margin-bottom:1rem">
@@ -1397,6 +1593,59 @@ function openManageJob(jobId){
     </div>`;
   setAddTab('file');
   document.getElementById('overlay').classList.add('open');
+  loadManageMembers(jobId);
+}
+
+async function saveJobInfo(jobId){
+  const name=((document.getElementById('mj-name')||{}).value||'').trim();
+  const customer=((document.getElementById('mj-customer')||{}).value||'').trim()||null;
+  if(!name){ alert('Job name cannot be empty.'); return; }
+  setBtnLoading('mj-save-info-btn',true,'Saving...');
+  try{
+    try{
+      await sbPatch('jobs',jobId,{name,customer});
+    }catch(err){
+      // jobs.customer column may not exist yet — save name only
+      await sbPatch('jobs',jobId,{name});
+    }
+    const job=jobs.find(j=>j.id===jobId);
+    if(job){ job.name=name; job.customer=customer; }
+    renderSidebar();
+    if(jobId===currentJobId){
+      document.getElementById('header-job-name').textContent=name;
+      document.getElementById('header-customer').textContent=customer||'';
+    }
+    toast('✓ Job info saved');
+  }catch(e){ alert('Save failed: '+e); }
+  setBtnLoading('mj-save-info-btn',false,'Save job info');
+}
+
+async function loadManageMembers(jobId){
+  const el=document.getElementById('mj-members');
+  if(!el)return;
+  try{
+    const members=await sbGet('users',`role=eq.member&order=username.asc&select=id,username`);
+    if(!members.length){ el.innerHTML='<span style="color:var(--text3)">No member accounts yet. Invite teammates from the Admin panel.</span>'; return; }
+    let asn=[];
+    try{ asn=await sbGet('job_assignments',`job_id=eq.${encodeURIComponent(jobId)}&select=user_id`); }
+    catch(e){ /* job_assignments table may not exist yet — show members unchecked */ }
+    const assigned=new Set(asn.map(a=>a.user_id));
+    el.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:6px">`+members.map(m=>
+      `<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:3px 10px;cursor:pointer">
+        <input type="checkbox" ${assigned.has(m.id)?'checked':''} onchange="toggleJobAssignment('${esc(jobId)}','${m.id}',this.checked)">${esc(m.username)}</label>`
+    ).join('')+`</div><div style="font-size:11px;color:var(--text3);margin-top:.4rem">Admins always see every job. Members only see jobs checked here.</div>`;
+  }catch(e){ el.innerHTML='<span style="color:var(--text3)">Could not load members.</span>'; }
+}
+
+async function toggleJobAssignment(jobId,userId,assign){
+  try{
+    if(assign){
+      await sbPost('job_assignments',{job_id:jobId,user_id:userId});
+    }else{
+      const existing=await sbGet('job_assignments',`job_id=eq.${encodeURIComponent(jobId)}&user_id=eq.${userId}&select=id`);
+      for(const a of existing) await sbDelete('job_assignments',a.id);
+    }
+  }catch(e){ alert('Could not update assignment: '+e); loadManageMembers(jobId); }
 }
 
 let addBomItems=[];
@@ -1526,7 +1775,9 @@ async function confirmDeleteJob(jobId){
       document.getElementById('job-tabs').style.display='none';
       document.getElementById('main-nav').style.display='none';
       document.getElementById('header-job-name').textContent='Select a job';
+      document.getElementById('header-customer').textContent='';
       document.getElementById('export-btn').disabled=true;
+      document.getElementById('export-pdf-btn').disabled=true;
     }
     closeModal();
     renderSidebar();
@@ -1654,9 +1905,12 @@ async function submitBulkRelease(){
       const arr = Array.isArray(batch)?batch:[batch];
       releases.push(...arr);
     }
+    const totalUnits=rows.reduce((s,x)=>s+(parseInt(x.qty)||0),0);
+    const nItems=bulkItems.length;
     closeModal();
     refreshAll();
-    toast(`✓ ${bulkItems.length} item${bulkItems.length!==1?'s':''} released`);
+    logActivity('bulk_released',`released ${nItems} item${nItems!==1?'s':''} (${totalUnits.toLocaleString()} units)${supplier?' from '+supplier:''}`).then(loadActivity);
+    toast(`✓ ${nItems} item${nItems!==1?'s':''} released`);
   }catch(e){ alert('Failed to submit: '+e); }
   setBtnLoading('br-submit-btn',false,'📦 Submit release');
 }
@@ -1702,6 +1956,108 @@ function exportExcel(){
   XLSX.writeFile(wb,jobName.replace(/[^a-z0-9]/gi,'_')+'_Releases_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
+// ─── PDF report (print-ready) ─────────────────────────────────────────────────
+function exportPdf(){
+  if(!currentJobId)return;
+  const job=jobs.find(j=>j.id===currentJobId);
+  const jobName=job?job.name:'Job';
+  const customer=job&&job.customer?job.customer:'';
+  const items=currentItems();
+  const cats=currentCats();
+  const totalQty=items.reduce((s,i)=>s+i.totalQty,0);
+  const relQtyTotal=items.reduce((s,i)=>s+itemRelQty(i.id),0);
+  const pct=totalQty>0?Math.round(relQtyTotal/totalQty*100):0;
+  const started=items.filter(i=>itemStatus(i)!=='Pending').length;
+  const fullRel=items.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length;
+  const pending=items.length-started;
+  const logo=(document.querySelector('.sidebar-logo img')||{}).src||'';
+  const now=new Date().toLocaleString();
+
+  const catRows=cats.map(cat=>{
+    const ci=items.filter(i=>i.cat===cat);
+    const t=ci.reduce((s,i)=>s+i.totalQty,0);
+    const r=ci.reduce((s,i)=>s+itemRelQty(i.id),0);
+    const p=t>0?Math.round(r/t*100):0;
+    return `<tr>
+      <td>${esc(cat)}</td>
+      <td class="num">${ci.length}</td>
+      <td class="num">${t.toLocaleString()}</td>
+      <td class="num">${r.toLocaleString()}</td>
+      <td class="num">${(t-r).toLocaleString()}</td>
+      <td class="num"><div class="pbar"><div class="pfill" style="width:${p}%"></div></div>${p}%</td>
+    </tr>`;
+  }).join('');
+
+  const relSorted=[...releases].sort((a,b)=>String(b.release_date||'').localeCompare(String(a.release_date||'')));
+  const logRows=relSorted.length?relSorted.map(r=>`<tr${r.bulk_id?' class="bulk"':''}>
+      <td>${esc(r.item_id)}${r.bulk_id?' <span class="tag">bulk</span>':''}</td>
+      <td>${esc((r.category||'').split(' ')[0])}</td>
+      <td class="num">${(parseInt(r.qty)||0).toLocaleString()}</td>
+      <td>${esc(r.release_date||'—')}</td>
+      <td>${esc(r.need_by||'—')}</td>
+      <td>${esc(r.supplier||'—')}</td>
+      <td>${esc(r.status||'Released')}</td>
+      <td>${esc(r.logged_by_username||'—')}</td>
+    </tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:#888;padding:14px">No releases logged yet.</td></tr>';
+
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(jobName)} — Material Release Report</title>
+  <style>
+    *{box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;color:#1a1917;margin:0;padding:32px;font-size:12px}
+    .head{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1a5fa8;padding-bottom:14px;margin-bottom:18px}
+    .head img{height:42px}
+    .head .meta{text-align:right;font-size:11px;color:#555}
+    h1{font-size:20px;margin:0 0 2px}
+    .cust{font-size:13px;color:#555;margin-bottom:14px}
+    .kpis{display:flex;gap:10px;margin-bottom:22px}
+    .kpi{flex:1;border:1px solid #ddd;border-radius:8px;padding:10px 12px}
+    .kpi .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#777}
+    .kpi .val{font-size:22px;font-weight:700;margin-top:3px}
+    .kpi .val.blue{color:#1a5fa8}
+    h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#1a5fa8;border-bottom:1px solid #eee;padding-bottom:5px;margin:22px 0 8px}
+    table{width:100%;border-collapse:collapse;font-size:11px}
+    th{text-align:left;background:#f3f2ee;border-bottom:1px solid #ddd;padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:#555}
+    td{padding:5px 8px;border-bottom:1px solid #eee}
+    td.num{text-align:right}
+    tr.bulk td{background:#eef4fb}
+    .tag{background:#1a5fa8;color:#fff;border-radius:3px;font-size:8px;padding:1px 4px;text-transform:uppercase;vertical-align:middle}
+    .pbar{display:inline-block;width:60px;height:5px;background:#eee;border-radius:9px;overflow:hidden;vertical-align:middle;margin-right:5px}
+    .pfill{height:100%;background:#1a5fa8}
+    .foot{margin-top:24px;font-size:9px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:8px}
+    @media print{body{padding:0}@page{margin:14mm}}
+  </style></head>
+  <body onload="window.print()">
+    <div class="head">
+      ${logo?`<img src="${logo}" alt="ULE Group">`:'<div style="font-weight:700;font-size:18px">ULE GROUP</div>'}
+      <div class="meta">Material Release Report<br>Generated ${esc(now)}</div>
+    </div>
+    <h1>${esc(jobName)}</h1>
+    <div class="cust">${customer?'Customer: '+esc(customer):'&nbsp;'}</div>
+    <div class="kpis">
+      <div class="kpi"><div class="lbl">Overall released</div><div class="val blue">${pct}%</div><div style="font-size:10px;color:#777">${relQtyTotal.toLocaleString()} / ${totalQty.toLocaleString()} units</div></div>
+      <div class="kpi"><div class="lbl">Items started</div><div class="val">${started}<span style="font-size:12px;color:#999"> / ${items.length}</span></div></div>
+      <div class="kpi"><div class="lbl">Fully released</div><div class="val">${fullRel}</div></div>
+      <div class="kpi"><div class="lbl">Still pending</div><div class="val">${pending}</div></div>
+    </div>
+    <h2>Category breakdown</h2>
+    <table>
+      <thead><tr><th>Category</th><th class="num">Items</th><th class="num">BOM qty</th><th class="num">Released</th><th class="num">Remaining</th><th class="num">Progress</th></tr></thead>
+      <tbody>${catRows}</tbody>
+    </table>
+    <h2>Release log (${relSorted.length})</h2>
+    <table>
+      <thead><tr><th>Item</th><th>Category</th><th class="num">Qty</th><th>Release date</th><th>Need by</th><th>Supplier</th><th>Status</th><th>Logged by</th></tr></thead>
+      <tbody>${logRows}</tbody>
+    </table>
+    <div class="foot">ULE Group · Powered by Partnerships · Material Release Tracker</div>
+  </body></html>`;
+
+  const win=window.open('','_blank');
+  if(!win){ alert('Please allow pop-ups to export the PDF report.'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
 // ─── Auth & session ───────────────────────────────────────────────────────────
 let currentUser = null; // {id, username, role}
 
@@ -1734,7 +2090,19 @@ function showApp() {
   document.getElementById('user-avatar').textContent = currentUser.username.slice(0,2).toUpperCase();
   document.getElementById('user-name-display').textContent = currentUser.username;
   document.getElementById('user-role-display').textContent = currentUser.role === 'admin' ? 'Admin' : 'Member';
-  if(currentUser.role === 'admin') document.getElementById('admin-btn').style.display = 'inline-flex';
+  const isAdmin = currentUser.role === 'admin';
+  document.getElementById('admin-btn').style.display = isAdmin ? 'inline-flex' : 'none';
+  // Job creation is admin-only — members only see jobs assigned to them
+  document.getElementById('new-job-btn').style.display = isAdmin ? 'flex' : 'none';
+  const noJobBtn = document.getElementById('no-job-create-btn');
+  const noJobSub = document.getElementById('no-job-sub');
+  if(isAdmin){
+    noJobBtn.style.display = '';
+    noJobSub.textContent = 'Choose a job from the sidebar, or create a new one to get started.';
+  }else{
+    noJobBtn.style.display = 'none';
+    noJobSub.textContent = 'No jobs have been assigned to you yet. Ask an admin to add you to a job.';
+  }
 }
 
 async function submitLogin() {
@@ -1809,10 +2177,17 @@ async function openAdminPanel() {
   try {
     const users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at');
     const invites = await sbGet('invites', 'order=created_at.desc&limit=10&select=id,token,used_at,created_at');
+    let assignments = [];
+    try{ assignments = await sbGet('job_assignments', 'select=id,job_id,user_id'); }
+    catch(e){ /* job_assignments table may not exist yet — assignment UI just shows empty */ }
+    const byUser={};
+    for(const a of assignments){ (byUser[a.user_id]=byUser[a.user_id]||[]).push(a); }
+    const jobName=id=>{const j=jobs.find(x=>x.id===id);return j?j.name:id;};
     document.getElementById('modal-body').innerHTML = `
       <div class="sec-label">Team members (${users.length})</div>
       ${users.map(u=>`
-        <div class="admin-user-row">
+        <div style="border:1px solid var(--border);border-radius:8px;margin-bottom:.5rem;overflow:hidden">
+        <div class="admin-user-row" style="border:none;margin:0">
           <div class="user-avatar" style="width:28px;height:28px;font-size:12px">${u.username.slice(0,2).toUpperCase()}</div>
           <div class="admin-user-info">
             <div class="admin-user-name">${esc(u.username)} ${u.id===currentUser.id?'<span style="font-size:10px;color:var(--text3)">(you)</span>':''}</div>
@@ -1820,6 +2195,17 @@ async function openAdminPanel() {
           </div>
           <span class="role-badge ${u.role==='admin'?'role-admin':'role-member'}">${u.role}</span>
           ${u.id!==currentUser.id?`<button class="btn" style="height:24px;font-size:11px;color:var(--red)" onclick="deleteUser('${u.id}','${esc(u.username)}')">Remove</button>`:''}
+        </div>
+        ${u.role==='admin'?`<div style="padding:0 .75rem .6rem;font-size:11px;color:var(--text3)">Sees all jobs</div>`:`
+        <div style="padding:0 .75rem .6rem">
+          <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+            ${(byUser[u.id]||[]).map(a=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);border-radius:99px;padding:2px 4px 2px 9px">${esc(jobName(a.job_id))}<button onclick="adminUnassign('${a.id}')" style="background:none;border:none;cursor:pointer;color:var(--blue);font-size:12px;line-height:1;padding:0 2px" title="Unassign">✕</button></span>`).join('')||'<span style="font-size:11px;color:var(--text3)">No jobs assigned</span>'}
+            <select onchange="if(this.value){adminAssign('${u.id}',this.value)}" style="height:24px;font-size:11px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text);padding:0 4px">
+              <option value="">+ Assign job…</option>
+              ${jobs.filter(j=>!(byUser[u.id]||[]).some(a=>a.job_id===j.id)).map(j=>`<option value="${esc(j.id)}">${esc(j.name)}</option>`).join('')}
+            </select>
+          </div>
+        </div>`}
         </div>`).join('')}
 
       <div class="sec-label" style="margin-top:1rem">Invite links</div>
@@ -1877,6 +2263,20 @@ function copyToClipboard(text) {
   } catch(e) {
     prompt('Copy this invite link:', text);
   }
+}
+
+async function adminAssign(userId, jobId){
+  try{
+    await sbPost('job_assignments',{job_id:jobId,user_id:userId});
+    openAdminPanel();
+  }catch(e){ alert('Failed to assign job: '+e); }
+}
+
+async function adminUnassign(assignmentId){
+  try{
+    await sbDelete('job_assignments',assignmentId);
+    openAdminPanel();
+  }catch(e){ alert('Failed to unassign job: '+e); }
 }
 
 async function deleteUser(userId, username) {
