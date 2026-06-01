@@ -96,6 +96,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .cust-caret{font-size:9px;color:rgba(255,255,255,.4);width:9px;flex-shrink:0}
 .cust-name{flex:1;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cust-count{font-size:10px;color:rgba(255,255,255,.3);flex-shrink:0}
+#sidebar-cust-filter-wrap{padding:.1rem 1.1rem .5rem}
+#sidebar-cust-filter{width:100%;height:28px;font-size:12px;font-family:'DM Sans',sans-serif;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:0 8px;cursor:pointer;outline:none}
+#sidebar-cust-filter option{background:#2a2a28;color:#fff}
 .sidebar-footer{padding:.75rem 1.1rem;border-top:1px solid var(--sidebar-border);display:flex;flex-direction:column;gap:6px}
 .sidebar-btn{width:100%;height:30px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:6px;color:#fff;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .12s}
 .sidebar-btn:hover{background:rgba(255,255,255,.18)}
@@ -347,6 +350,7 @@ th.sortable:hover{background:var(--border)}
     <div class="sidebar-app-label">Material Release Tracker</div>
   </div>
   <div class="sidebar-section">Jobs</div>
+  <div id="sidebar-cust-filter-wrap" style="display:none"></div>
   <div class="sidebar-jobs" id="sidebar-jobs">
     <div style="padding:1rem 1.1rem;font-size:12px;color:rgba(255,255,255,.3)"><span class="spinner" style="border-top-color:rgba(255,255,255,.4);border-color:rgba(255,255,255,.15)"></span></div>
   </div>
@@ -565,13 +569,28 @@ function itemStatus(item){
 }
 function badge(s){const c={Pending:'b-pending',Partial:'b-partial',Released:'b-released',Delivered:'b-delivered',Installed:'b-installed'}[s]||'b-pending';return`<span class="badge ${c}">${s}</span>`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+let jobReleasedQty = {}; // jobId -> total released qty across ALL its releases (for sidebar %)
+
 function jobPct(jobId){
   const items=(jobItems[jobId]||[]);
   const total=items.reduce((s,i)=>s+i.total_qty,0);
   if(total===0)return 0;
-  // count releases for this job — use pre-loaded releases if current, else estimate 0
-  if(jobId===currentJobId){const rel=items.reduce((s,i)=>s+itemRelQty(i.item_name),0);return Math.round(rel/total*100);}
-  return 0;
+  // Current job uses live release data; other jobs use the cached per-job totals.
+  const rel = (jobId===currentJobId)
+    ? items.reduce((s,i)=>s+itemRelQty(i.item_name),0)
+    : (jobReleasedQty[jobId]||0);
+  return Math.min(100, Math.round(rel/total*100));
+}
+
+// Fetch total released qty per job (across all jobs) so the sidebar can show
+// each job's % complete without having to open it.
+async function loadJobReleaseTotals(){
+  try{
+    const rows = await sbGet('releases','select=job_id,qty&limit=100000');
+    const map={};
+    for(const r of rows){ if(r.job_id) map[r.job_id]=(map[r.job_id]||0)+(parseInt(r.qty)||0); }
+    jobReleasedQty=map;
+  }catch(e){ /* leave previous totals on failure */ }
 }
 
 // ─── Sync ────────────────────────────────────────────────────────────────────
@@ -650,6 +669,9 @@ async function loadAll(){
       jobItems[item.job_id].push(item);
     }
 
+    // Released totals per job (so the sidebar shows % for every job)
+    await loadJobReleaseTotals();
+
     setSyncStatus('ok','Live');
     renderSidebar();
 
@@ -715,6 +737,7 @@ async function syncJobsList(){
   const allItems = await sbGet('job_items','order=created_at.asc&limit=10000');
   jobItems = {};
   for(const item of allItems){ if(!jobItems[item.job_id]) jobItems[item.job_id]=[]; jobItems[item.job_id].push(item); }
+  await loadJobReleaseTotals();
   renderSidebar();
 }
 
@@ -734,7 +757,7 @@ setInterval(async()=>{
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
 function jobItemHtml(job){
   const items=jobItems[job.id]||[];
-  const pct=job.id===currentJobId?jobPct(job.id):0;
+  const pct=jobPct(job.id);
   const active=job.id===currentJobId?'active':'';
   const manageBtn=can('editJob')?`<button onclick="event.stopPropagation();openManageJob('${esc(job.id)}')" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0" title="Manage job">⋯</button>`:'';
   return`<div class="job-item ${active}" onclick="selectJob('${esc(job.id)}')">
@@ -747,17 +770,41 @@ function jobItemHtml(job){
   </div>`;
 }
 
+let customerFilter=''; // '' = all, '__other__' = no-customer jobs, else a customer name
+
+function renderCustomerFilter(){
+  const wrap=document.getElementById('sidebar-cust-filter-wrap');
+  if(!wrap)return;
+  const custs=customerNames();
+  const hasOther=jobs.some(j=>!(j.customer&&j.customer.trim()));
+  // Only worth showing the filter when there's more than one group to choose from
+  if(custs.length<2 && !(custs.length===1&&hasOther)){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+  if(customerFilter && customerFilter!=='__other__' && !custs.includes(customerFilter)) customerFilter='';
+  wrap.style.display='block';
+  wrap.innerHTML=`<select id="sidebar-cust-filter" onchange="customerFilter=this.value;renderSidebar()">
+    <option value="">All customers</option>
+    ${custs.map(c=>`<option value="${esc(c)}"${customerFilter===c?' selected':''}>${esc(c)}</option>`).join('')}
+    ${hasOther?`<option value="__other__"${customerFilter==='__other__'?' selected':''}>No customer</option>`:''}
+  </select>`;
+}
+
 function renderSidebar(){
+  renderCustomerFilter();
   const el=document.getElementById('sidebar-jobs');
   if(!jobs.length){el.innerHTML='<div style="padding:.75rem 1.1rem;font-size:12px;color:rgba(255,255,255,.3)">No jobs yet</div>';return;}
+  // Apply customer filter
+  let visible=jobs;
+  if(customerFilter==='__other__') visible=jobs.filter(j=>!(j.customer&&j.customer.trim()));
+  else if(customerFilter) visible=jobs.filter(j=>(j.customer||'').trim()===customerFilter);
+  if(!visible.length){ el.innerHTML='<div style="padding:.75rem 1.1rem;font-size:12px;color:rgba(255,255,255,.3)">No jobs for this customer</div>'; return; }
   // Group jobs by customer
   const groups={};
-  for(const job of jobs){
+  for(const job of visible){
     const key=(job.customer&&job.customer.trim())?job.customer.trim():'Other';
     (groups[key]=groups[key]||[]).push(job);
   }
   const keys=Object.keys(groups).sort((a,b)=>a==='Other'?1:b==='Other'?-1:a.localeCompare(b));
-  // If every job is "Other" (no customers set), render a flat list
+  // If every visible job is "Other" (no customers set), render a flat list
   if(keys.length===1&&keys[0]==='Other'){
     el.innerHTML=groups['Other'].map(jobItemHtml).join('');
     return;
