@@ -2194,6 +2194,7 @@ async function openAdminPanel() {
             <div class="admin-user-meta">Joined ${new Date(u.created_at).toLocaleDateString()}</div>
           </div>
           <span class="role-badge ${u.role==='admin'?'role-admin':'role-member'}">${u.role}</span>
+          <button class="btn" style="height:24px;font-size:11px" onclick="resetUserPassword('${u.id}','${esc(u.username)}')" title="Set a new password for this user">Reset PW</button>
           ${u.id!==currentUser.id?`<button class="btn" style="height:24px;font-size:11px;color:var(--red)" onclick="deleteUser('${u.id}','${esc(u.username)}')">Remove</button>`:''}
         </div>
         ${u.role==='admin'?`<div style="padding:0 .75rem .6rem;font-size:11px;color:var(--text3)">Sees all jobs</div>`:`
@@ -2277,6 +2278,18 @@ async function adminUnassign(assignmentId){
     await sbDelete('job_assignments',assignmentId);
     openAdminPanel();
   }catch(e){ alert('Failed to unassign job: '+e); }
+}
+
+async function resetUserPassword(userId, username) {
+  const pw = prompt(`Set a new password for "${username}":\n\n(They will use this to sign in. Minimum 6 characters.)`);
+  if(pw === null) return; // cancelled
+  if(pw.length < 6) { alert('Password must be at least 6 characters.'); return; }
+  try {
+    await sbPatch('users', userId, {password_hash: hashPassword(pw)});
+    const self = (currentUser && userId === currentUser.id) ? ' (your own login)' : '';
+    toast(`✓ Password reset for ${username}`);
+    alert(`Password for "${username}" has been reset${self}.\n\nNew password: ${pw}\n\nShare it with them securely — it is not stored in readable form.`);
+  } catch(e) { alert('Failed to reset password: ' + e); }
 }
 
 async function deleteUser(userId, username) {
