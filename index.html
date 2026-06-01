@@ -96,6 +96,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .cust-caret{font-size:9px;color:rgba(255,255,255,.4);width:9px;flex-shrink:0}
 .cust-name{flex:1;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cust-count{font-size:10px;color:rgba(255,255,255,.3);flex-shrink:0}
+.cust-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cust-jobs{border-left:2px solid transparent}
 #sidebar-cust-filter-wrap{padding:.1rem 1.1rem .5rem}
 #sidebar-cust-filter{width:100%;height:28px;font-size:12px;font-family:'DM Sans',sans-serif;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:0 8px;cursor:pointer;outline:none}
 #sidebar-cust-filter option{background:#2a2a28;color:#fff}
@@ -708,7 +710,11 @@ async function selectJob(jobId){
   }
   const job=jobs.find(j=>j.id===jobId);
   document.getElementById('header-job-name').textContent=job?job.name:'Job';
-  document.getElementById('header-customer').textContent=job&&job.customer?job.customer:'';
+  const hc=document.getElementById('header-customer');
+  if(job&&job.customer&&job.customer.trim()){
+    const col=customerColor(job.customer.trim());
+    hc.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:5px;vertical-align:middle"></span>${esc(job.customer)}`;
+  }else{ hc.textContent=''; }
   document.getElementById('no-job-state').style.display='none';
   document.getElementById('job-tabs').style.display='block';
   document.getElementById('main-nav').style.display='flex';
@@ -772,6 +778,31 @@ function jobItemHtml(job){
 
 let customerFilter=''; // '' = all, '__other__' = no-customer jobs, else a customer name
 
+// Customer colors: a manager-chosen color (stored on jobs.customer_color) wins;
+// then a built-in default; otherwise a stable auto-generated color from the name.
+const CUSTOMER_PALETTE=['#6db1e8','#e8a33d','#6ec1a0','#c06ab0','#e0695f','#7e8cd6','#4db6ac','#d4953b','#8bc34a','#b07cc6'];
+const CUSTOMER_COLOR_DEFAULTS={ 'FSG':'#6db1e8' };
+function autoCustomerColor(name){
+  if(!name || name==='Other') return '#8f8f86';
+  let h=0; for(let i=0;i<name.length;i++) h=(h*31 + name.charCodeAt(i))>>>0;
+  return CUSTOMER_PALETTE[h%CUSTOMER_PALETTE.length];
+}
+function storedCustomerColor(name){
+  const j=(jobs||[]).find(x=>x.customer && x.customer.trim()===name && x.customer_color);
+  return j?j.customer_color:null;
+}
+function customerColor(name){
+  if(!name || name==='Other') return '#8f8f86';
+  name=name.trim();
+  return storedCustomerColor(name) || CUSTOMER_COLOR_DEFAULTS[name] || autoCustomerColor(name);
+}
+// Keep the color <input> in sync with the typed customer's current color
+function syncCustomerColorPicker(inputId,colorId){
+  const name=((document.getElementById(inputId)||{}).value||'').trim();
+  const c=document.getElementById(colorId);
+  if(c && name) c.value=customerColor(name);
+}
+
 function renderCustomerFilter(){
   const wrap=document.getElementById('sidebar-cust-filter-wrap');
   if(!wrap)return;
@@ -812,13 +843,15 @@ function renderSidebar(){
   el.innerHTML=keys.map(key=>{
     const collapsed=collapsedCustomers[key];
     const list=groups[key];
+    const color=customerColor(key);
     return`<div class="cust-group">
       <div class="cust-header" onclick="toggleCustomer('${esc(key).replace(/'/g,"\\'")}')">
         <span class="cust-caret">${collapsed?'▸':'▾'}</span>
+        <span class="cust-dot" style="background:${color}"></span>
         <span class="cust-name">${esc(key)}</span>
         <span class="cust-count">${list.length}</span>
       </div>
-      <div class="cust-jobs" style="display:${collapsed?'none':'block'}">${list.map(jobItemHtml).join('')}</div>
+      <div class="cust-jobs" style="display:${collapsed?'none':'block'};border-left-color:${color}">${list.map(jobItemHtml).join('')}</div>
     </div>`;
   }).join('');
 }
@@ -1287,7 +1320,13 @@ function openNewJobModal(){
   document.getElementById('modal-body').innerHTML=`
     <div class="form-grid">
       <div class="form-row"><label>Job name / number</label><input type="text" id="nj-name" placeholder="e.g. 45-Main-Street, Harbor Project..."></div>
-      <div class="form-row"><label>Customer (optional)</label><input type="text" id="nj-customer" list="customer-list" placeholder="e.g. Turner Construction"><datalist id="customer-list">${customerNames().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
+      <div class="form-row"><label>Customer (optional)</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="nj-customer" list="customer-list" placeholder="e.g. Turner Construction" style="flex:1" oninput="syncCustomerColorPicker('nj-customer','nj-customer-color')">
+          <input type="color" id="nj-customer-color" value="#6db1e8" title="Customer color" style="width:38px;height:32px;padding:2px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);cursor:pointer;flex-shrink:0">
+          <datalist id="customer-list">${customerNames().map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+        </div>
+      </div>
     </div>
     ${currentUser&&currentUser.role==='admin'?`<div class="form-row"><label>Assign team members (optional)</label><div id="nj-members" style="font-size:12px;color:var(--text3)">Loading members…</div></div>`:''}
     <div class="form-row">
@@ -1617,15 +1656,17 @@ async function createJob(){
   const finalItems=blankVisible?[]:parsedBomItems.filter(i=>i.name&&i.qty>0);
 
   const customer=((document.getElementById('nj-customer')||{}).value||'').trim()||null;
+  const customer_color=customer?((document.getElementById('nj-customer-color')||{}).value||null):null;
 
   setBtnLoading('save-btn',true,'Creating...');
   try{
     const jobId='job-'+Date.now();
     try{
-      await sbPost('jobs',{id:jobId,name:name.trim(),customer});
+      await sbPost('jobs',{id:jobId,name:name.trim(),customer,customer_color});
     }catch(err){
-      // jobs.customer column may not exist yet (migration not run) — create without it
-      await sbPost('jobs',{id:jobId,name:name.trim()});
+      // customer_color and/or customer columns may not exist yet — degrade gracefully
+      try{ await sbPost('jobs',{id:jobId,name:name.trim(),customer}); }
+      catch(e2){ await sbPost('jobs',{id:jobId,name:name.trim()}); }
     }
     if(finalItems.length>0){
       const rows=finalItems.map(i=>({job_id:jobId,item_name:i.name,category:i.category||inferCategory(i.name),total_qty:parseInt(i.qty)||0}));
@@ -1660,7 +1701,13 @@ function openManageJob(jobId){
       <div class="sec-label">Job info</div>
       <div class="form-grid">
         <div class="form-row"><label>Job name</label><input type="text" id="mj-name" value="${esc(job.name)}"></div>
-        <div class="form-row"><label>Customer</label><input type="text" id="mj-customer" list="customer-list" value="${esc(job.customer||'')}" placeholder="e.g. Turner Construction"><datalist id="customer-list">${customerNames().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
+        <div class="form-row"><label>Customer</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="text" id="mj-customer" list="customer-list" value="${esc(job.customer||'')}" placeholder="e.g. Turner Construction" style="flex:1" oninput="syncCustomerColorPicker('mj-customer','mj-customer-color')">
+            <input type="color" id="mj-customer-color" value="${job.customer?customerColor(job.customer):'#6db1e8'}" title="Customer color" style="width:38px;height:32px;padding:2px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);cursor:pointer;flex-shrink:0">
+            <datalist id="customer-list">${customerNames().map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+          </div>
+        </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;margin-top:.2rem">
         <button class="btn btn-blue" id="mj-save-info-btn" style="height:28px;font-size:12px" onclick="saveJobInfo('${esc(jobId)}')">Save job info</button>
@@ -1737,21 +1784,33 @@ function openManageJob(jobId){
 async function saveJobInfo(jobId){
   const name=((document.getElementById('mj-name')||{}).value||'').trim();
   const customer=((document.getElementById('mj-customer')||{}).value||'').trim()||null;
+  const color=customer?((document.getElementById('mj-customer-color')||{}).value||null):null;
   if(!name){ alert('Job name cannot be empty.'); return; }
   setBtnLoading('mj-save-info-btn',true,'Saving...');
   try{
     try{
-      await sbPatch('jobs',jobId,{name,customer});
+      await sbPatch('jobs',jobId,{name,customer,customer_color:color});
     }catch(err){
-      // jobs.customer column may not exist yet — save name only
-      await sbPatch('jobs',jobId,{name});
+      // customer_color and/or customer columns may not exist yet — degrade gracefully
+      try{ await sbPatch('jobs',jobId,{name,customer}); }
+      catch(e2){ await sbPatch('jobs',jobId,{name}); }
     }
     const job=jobs.find(j=>j.id===jobId);
-    if(job){ job.name=name; job.customer=customer; }
+    if(job){ job.name=name; job.customer=customer; job.customer_color=color; }
+    // Color is per-customer: apply the chosen color to every job of this customer
+    if(customer && color){
+      for(const j of jobs){
+        if(j.id!==jobId && (j.customer||'').trim()===customer && j.customer_color!==color){
+          try{ await sbPatch('jobs',j.id,{customer_color:color}); j.customer_color=color; }catch(e){}
+        }
+      }
+    }
     renderSidebar();
     if(jobId===currentJobId){
       document.getElementById('header-job-name').textContent=name;
-      document.getElementById('header-customer').textContent=customer||'';
+      const hc=document.getElementById('header-customer');
+      if(customer){ hc.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${customerColor(customer)};margin-right:5px;vertical-align:middle"></span>${esc(customer)}`; }
+      else hc.textContent='';
     }
     toast('✓ Job info saved');
   }catch(e){ alert('Save failed: '+e); }
