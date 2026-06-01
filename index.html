@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ULE Group — Material Release Tracker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -285,7 +286,38 @@ th.sortable:hover{background:var(--border)}
       <div class="form-row"><label>Password</label><input type="password" id="login-password" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitLogin()"></div>
       <button class="login-submit" id="login-submit" onclick="submitLogin()">Sign in</button>
     </div>
+    <div class="login-footer"><a href="#" onclick="showForgotPassword();return false;" style="color:var(--blue);text-decoration:none;font-weight:500">Forgot password?</a></div>
     <div class="login-footer">ULE Group · Release Management Platform</div>
+  </div>
+</div>
+
+<!-- ── FORGOT PASSWORD SCREEN ── -->
+<div class="login-screen hidden" id="forgot-screen">
+  <div class="login-card">
+    <div class="login-title">Reset your password</div>
+    <div class="login-sub">Enter your username and we'll email you a reset link.</div>
+    <div class="login-error" id="forgot-error"></div>
+    <div class="login-error" id="forgot-ok" style="background:var(--green-bg);border-color:var(--green-border);color:var(--green)"></div>
+    <div class="login-form">
+      <div class="form-row"><label>Username</label><input type="text" id="forgot-username" placeholder="Enter your username" autocomplete="username" onkeydown="if(event.key==='Enter')submitForgotPassword()"></div>
+      <button class="login-submit" id="forgot-submit" onclick="submitForgotPassword()">Send reset link</button>
+    </div>
+    <div class="login-footer"><a href="#" onclick="backToLogin();return false;" style="color:var(--blue);text-decoration:none;font-weight:500">← Back to sign in</a></div>
+  </div>
+</div>
+
+<!-- ── SET NEW PASSWORD SCREEN (opened via reset link) ── -->
+<div class="login-screen hidden" id="reset-screen">
+  <div class="login-card">
+    <div class="login-title">Set a new password</div>
+    <div class="login-sub" id="reset-sub">Choose a new password for your account.</div>
+    <div class="login-error" id="reset-error"></div>
+    <div class="login-form">
+      <div class="form-row"><label>New password</label><input type="password" id="reset-password" placeholder="At least 6 characters" autocomplete="new-password"></div>
+      <div class="form-row"><label>Confirm new password</label><input type="password" id="reset-password2" placeholder="Re-enter new password" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitPasswordReset()"></div>
+      <button class="login-submit" id="reset-submit" onclick="submitPasswordReset()">Update password</button>
+    </div>
+    <div class="login-footer"><a href="#" onclick="backToLogin();return false;" style="color:var(--blue);text-decoration:none;font-weight:500">← Back to sign in</a></div>
   </div>
 </div>
 
@@ -298,6 +330,7 @@ th.sortable:hover{background:var(--border)}
     <div class="login-error" id="register-error"></div>
     <div class="login-form">
       <div class="form-row"><label>Choose a username</label><input type="text" id="reg-username" placeholder="e.g. jsmith" autocomplete="username"></div>
+      <div class="form-row"><label>Email (for password resets)</label><input type="email" id="reg-email" placeholder="you@company.com" autocomplete="email"></div>
       <div class="form-row"><label>Password</label><input type="password" id="reg-password" placeholder="Choose a password" autocomplete="new-password"></div>
       <div class="form-row"><label>Confirm password</label><input type="password" id="reg-password2" placeholder="Confirm password" onkeydown="if(event.key==='Enter')submitRegister()"></div>
       <button class="login-submit" id="register-submit" onclick="submitRegister()">Create account</button>
@@ -454,6 +487,15 @@ th.sortable:hover{background:var(--border)}
 const SB_URL = 'https://vusofoyhybywwwnvrjea.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1c29mb3loeWJ5d3d3bnZyamVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODE1MTQsImV4cCI6MjA5NTQ1NzUxNH0.ke2LVwS0_NDyAAQ1AEbzfb4ukArawvctBcOnt62EYPU';
 const HDR = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=representation'};
+
+// ─── EmailJS (password-reset emails) ───────────────────────────────────────────
+// Create a free account at https://www.emailjs.com → add an Email Service and a
+// Template, then paste the three IDs below. The template must reference these
+// variables: {{to_email}} (set as the template's "To Email"), {{username}}, {{reset_link}}.
+const EMAILJS = { publicKey:'', serviceId:'', templateId:'' };
+const RESET_TTL_MIN = 60; // reset links expire after this many minutes
+function emailjsReady(){ return !!(window.emailjs && EMAILJS.publicKey && EMAILJS.serviceId && EMAILJS.templateId); }
+(function(){ try{ if(window.emailjs && EMAILJS.publicKey) emailjs.init({publicKey:EMAILJS.publicKey}); }catch(e){} })();
 
 async function sbGet(table,params=''){const r=await fetch(`${SB_URL}/rest/v1/${table}?${params}`,{headers:HDR});if(!r.ok)throw await r.text();return r.json();}
 async function sbPost(table,body){const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:HDR,body:JSON.stringify(body)});if(!r.ok)throw await r.text();return r.json();}
@@ -637,13 +679,34 @@ async function selectJob(jobId){
   loadActivity();
 }
 
+// Re-fetch the job list (and, for members, their assignments) and re-render the
+// sidebar — lets newly created/assigned jobs appear without a manual refresh.
+async function syncJobsList(){
+  let jobsData = await sbGet('jobs','order=created_at.asc');
+  if(currentUser && currentUser.role!=='admin'){
+    try{
+      const asn = await sbGet('job_assignments', `user_id=eq.${currentUser.id}&select=job_id`);
+      const allowed = new Set(asn.map(a=>a.job_id));
+      jobsData = jobsData.filter(j=>allowed.has(j.id));
+    }catch(e){ /* job_assignments may not exist yet */ }
+  }
+  jobs = jobsData;
+  const allItems = await sbGet('job_items','order=created_at.asc&limit=10000');
+  jobItems = {};
+  for(const item of allItems){ if(!jobItems[item.job_id]) jobItems[item.job_id]=[]; jobItems[item.job_id].push(item); }
+  renderSidebar();
+}
+
 setInterval(async()=>{
-  if(!currentJobId)return;
+  if(!currentUser)return;
   try{
-    releases=await sbGet('releases',`job_id=eq.${encodeURIComponent(currentJobId)}&order=created_at.asc&limit=5000`);
+    await syncJobsList();
+    if(currentJobId){
+      releases=await sbGet('releases',`job_id=eq.${encodeURIComponent(currentJobId)}&order=created_at.asc&limit=5000`);
+      refreshAll();
+      loadActivity();
+    }
     setSyncStatus('ok','Live');
-    refreshAll();
-    loadActivity();
   }catch(e){setSyncStatus('err','Sync error');}
 },30000);
 
@@ -1493,17 +1556,16 @@ async function createJob(){
       const rows=finalItems.map(i=>({job_id:jobId,item_name:i.name,category:i.category||inferCategory(i.name),total_qty:parseInt(i.qty)||0}));
       for(let i=0;i<rows.length;i+=50) await sbPost('job_items',rows.slice(i,i+50));
     }
-    if(newJobAssignees.size){
-      const asn=[...newJobAssignees].map(uid=>({job_id:jobId,user_id:uid}));
+    // Assign members: any admin-selected members, plus the creator themselves if
+    // they're a member (so they can see the job they just made without a refresh).
+    const assignees = new Set(newJobAssignees);
+    if(currentUser && currentUser.role!=='admin') assignees.add(currentUser.id);
+    if(assignees.size){
+      const asn=[...assignees].map(uid=>({job_id:jobId,user_id:uid}));
       try{ await sbPost('job_assignments',asn); }catch(e){ console.error('assignment insert failed',e); }
     }
-    const allJobs=await sbGet('jobs','order=created_at.asc');
-    jobs=allJobs;
-    const allItems=await sbGet('job_items','order=created_at.asc&limit=10000');
-    jobItems={};
-    for(const item of allItems){if(!jobItems[item.job_id])jobItems[item.job_id]=[];jobItems[item.job_id].push(item);}
+    await syncJobsList();
     closeModal();
-    renderSidebar();
     await selectJob(jobId);
     toast(`✓ Job "${name.trim()}" created`+(finalItems.length?` with ${finalItems.length} items`:''));
   }catch(e){alert('Failed to create job: '+e);}
@@ -2078,12 +2140,85 @@ function hashPassword(password) {
 function showLoginScreen() {
   document.getElementById('login-screen').classList.remove('hidden');
   document.getElementById('register-screen').classList.add('hidden');
+  document.getElementById('forgot-screen').classList.add('hidden');
+  document.getElementById('reset-screen').classList.add('hidden');
   document.getElementById('layout-wrap').style.cssText = 'display:none;flex:1;';
+}
+
+function backToLogin(){ showLoginScreen(); }
+
+function showForgotPassword(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('forgot-screen').classList.remove('hidden');
+  document.getElementById('forgot-error').style.display='none';
+  document.getElementById('forgot-ok').style.display='none';
+  const u=document.getElementById('login-username').value.trim();
+  if(u) document.getElementById('forgot-username').value=u;
+}
+
+async function submitForgotPassword(){
+  const username=document.getElementById('forgot-username').value.trim();
+  const err=document.getElementById('forgot-error');
+  const ok=document.getElementById('forgot-ok');
+  const btn=document.getElementById('forgot-submit');
+  err.style.display='none'; ok.style.display='none';
+  if(!username){ err.textContent='Enter your username.'; err.style.display='block'; return; }
+  if(!emailjsReady()){ err.textContent='Password-reset email is not configured yet. Please contact your admin.'; err.style.display='block'; return; }
+  btn.disabled=true; btn.textContent='Sending...';
+  try{
+    const users=await sbGet('users',`username=eq.${encodeURIComponent(username)}&select=id,username,email`);
+    if(users.length && users[0].email){
+      const user=users[0];
+      const token='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'.replace(/x/g,()=>Math.floor(Math.random()*16).toString(16));
+      const expires=new Date(Date.now()+RESET_TTL_MIN*60000).toISOString();
+      await sbPost('password_resets',{user_id:user.id, token, expires_at:expires});
+      const resetLink=`${window.location.origin+window.location.pathname}?reset=${token}`;
+      await emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, {
+        to_email:user.email, username:user.username, reset_link:resetLink
+      });
+    }
+    // Always show the same message (don't reveal whether the account/email exists)
+    ok.textContent='If an account with that username exists, a reset link has been emailed. Check your inbox (and spam).';
+    ok.style.display='block';
+  }catch(e){ err.textContent='Could not send reset email: '+e; err.style.display='block'; }
+  btn.disabled=false; btn.textContent='Send reset link';
+}
+
+let pendingResetToken=null; // set by bootAuth when ?reset= is present
+
+async function submitPasswordReset(){
+  const pw=document.getElementById('reset-password').value;
+  const pw2=document.getElementById('reset-password2').value;
+  const err=document.getElementById('reset-error');
+  const btn=document.getElementById('reset-submit');
+  err.style.display='none';
+  if(!pw || pw.length<6){ err.textContent='Password must be at least 6 characters.'; err.style.display='block'; return; }
+  if(pw!==pw2){ err.textContent='Passwords do not match.'; err.style.display='block'; return; }
+  if(!pendingResetToken){ err.textContent='This reset link is invalid.'; err.style.display='block'; return; }
+  btn.disabled=true; btn.textContent='Updating...';
+  try{
+    const rows=await sbGet('password_resets',`token=eq.${encodeURIComponent(pendingResetToken)}&select=id,user_id,expires_at,used_at`);
+    const r=rows[0];
+    if(!r || r.used_at || new Date(r.expires_at) < new Date()){
+      err.textContent='This reset link has expired or already been used. Request a new one.'; err.style.display='block';
+      btn.disabled=false; btn.textContent='Update password'; return;
+    }
+    await sbPatch('users', r.user_id, {password_hash:hashPassword(pw)});
+    await sbPatch('password_resets', r.id, {used_at:new Date().toISOString()});
+    window.history.replaceState({},'',window.location.pathname);
+    pendingResetToken=null;
+    showLoginScreen();
+    const le=document.getElementById('login-error');
+    le.textContent='✓ Password updated. Sign in with your new password.';
+    le.style.cssText='display:block;background:var(--green-bg);border-color:var(--green-border);color:var(--green)';
+  }catch(e){ err.textContent='Could not update password: '+e; err.style.display='block'; btn.disabled=false; btn.textContent='Update password'; }
 }
 
 function showApp() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('register-screen').classList.add('hidden');
+  document.getElementById('forgot-screen').classList.add('hidden');
+  document.getElementById('reset-screen').classList.add('hidden');
   document.getElementById('layout-wrap').style.cssText = 'display:flex;flex:1;';
   // Update header
   document.getElementById('user-badge').style.display = 'flex';
@@ -2092,17 +2227,10 @@ function showApp() {
   document.getElementById('user-role-display').textContent = currentUser.role === 'admin' ? 'Admin' : 'Member';
   const isAdmin = currentUser.role === 'admin';
   document.getElementById('admin-btn').style.display = isAdmin ? 'inline-flex' : 'none';
-  // Job creation is admin-only — members only see jobs assigned to them
-  document.getElementById('new-job-btn').style.display = isAdmin ? 'flex' : 'none';
-  const noJobBtn = document.getElementById('no-job-create-btn');
-  const noJobSub = document.getElementById('no-job-sub');
-  if(isAdmin){
-    noJobBtn.style.display = '';
-    noJobSub.textContent = 'Choose a job from the sidebar, or create a new one to get started.';
-  }else{
-    noJobBtn.style.display = 'none';
-    noJobSub.textContent = 'No jobs have been assigned to you yet. Ask an admin to add you to a job.';
-  }
+  // All users can create jobs (a member is auto-assigned to jobs they create)
+  document.getElementById('new-job-btn').style.display = 'flex';
+  document.getElementById('no-job-create-btn').style.display = '';
+  document.getElementById('no-job-sub').textContent = 'Choose a job from the sidebar, or create a new one to get started.';
 }
 
 async function submitLogin() {
@@ -2126,11 +2254,13 @@ async function submitLogin() {
 
 async function submitRegister() {
   const username = document.getElementById('reg-username').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
   const password = document.getElementById('reg-password').value;
   const password2 = document.getElementById('reg-password2').value;
   const errEl = document.getElementById('register-error');
   const btn = document.getElementById('register-submit');
   if(!username || !password) { errEl.textContent='Fill in all fields.'; errEl.style.display='block'; return; }
+  if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errEl.textContent='Enter a valid email address.'; errEl.style.display='block'; return; }
   if(password !== password2) { errEl.textContent='Passwords do not match.'; errEl.style.display='block'; return; }
   if(password.length < 6) { errEl.textContent='Password must be at least 6 characters.'; errEl.style.display='block'; return; }
   btn.disabled = true; btn.textContent = 'Creating account...';
@@ -2145,7 +2275,7 @@ async function submitRegister() {
     const invites = await sbGet('invites', `token=eq.${encodeURIComponent(token)}&select=id,used_at`);
     if(!invites.length || invites[0].used_at) { errEl.textContent='Invalid or already used invite link.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Create account'; return; }
     // Create user
-    const newUser = await sbPost('users', {username, password_hash: hash, role: 'member'});
+    const newUser = await sbPost('users', {username, email: email||null, password_hash: hash, role: 'member'});
     const user = Array.isArray(newUser) ? newUser[0] : newUser;
     // Mark invite used
     await sbPatch('invites', invites[0].id, {used_at: new Date().toISOString(), used_by: user.id});
@@ -2175,7 +2305,9 @@ async function openAdminPanel() {
   document.getElementById('modal-body').innerHTML = '<div class="empty-state"><span class="spinner"></span> Loading...</div>';
   document.getElementById('overlay').classList.add('open');
   try {
-    const users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at');
+    let users;
+    try{ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at,email'); }
+    catch(e){ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at'); } // email column may not exist pre-migration
     const invites = await sbGet('invites', 'order=created_at.desc&limit=10&select=id,token,used_at,created_at');
     let assignments = [];
     try{ assignments = await sbGet('job_assignments', 'select=id,job_id,user_id'); }
@@ -2191,9 +2323,10 @@ async function openAdminPanel() {
           <div class="user-avatar" style="width:28px;height:28px;font-size:12px">${u.username.slice(0,2).toUpperCase()}</div>
           <div class="admin-user-info">
             <div class="admin-user-name">${esc(u.username)} ${u.id===currentUser.id?'<span style="font-size:10px;color:var(--text3)">(you)</span>':''}</div>
-            <div class="admin-user-meta">Joined ${new Date(u.created_at).toLocaleDateString()}</div>
+            <div class="admin-user-meta">Joined ${new Date(u.created_at).toLocaleDateString()} ${u.email?'· '+esc(u.email):'· <span style="color:var(--amber)">no email</span>'}</div>
           </div>
           <span class="role-badge ${u.role==='admin'?'role-admin':'role-member'}">${u.role}</span>
+          <button class="btn" style="height:24px;font-size:11px" onclick="setUserEmail('${u.id}','${esc(u.username)}','${esc(u.email||'')}')" title="Set email for password resets">✉ Email</button>
           <button class="btn" style="height:24px;font-size:11px" onclick="resetUserPassword('${u.id}','${esc(u.username)}')" title="Set a new password for this user">Reset PW</button>
           ${u.id!==currentUser.id?`<button class="btn" style="height:24px;font-size:11px;color:var(--red)" onclick="deleteUser('${u.id}','${esc(u.username)}')">Remove</button>`:''}
         </div>
@@ -2280,6 +2413,21 @@ async function adminUnassign(assignmentId){
   }catch(e){ alert('Failed to unassign job: '+e); }
 }
 
+async function setUserEmail(userId, username, current) {
+  const email = prompt(`Email address for "${username}" (used for password-reset links):`, current||'');
+  if(email === null) return; // cancelled
+  const trimmed = email.trim();
+  if(trimmed && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) { alert('Enter a valid email address.'); return; }
+  try {
+    await sbPatch('users', userId, {email: trimmed||null});
+    toast(`✓ Email ${trimmed?'saved':'cleared'} for ${username}`);
+    openAdminPanel();
+  } catch(e) {
+    if(String(e).indexOf('email')>-1 || String(e).indexOf('42703')>-1) alert('The users.email column does not exist yet — run the migration first.');
+    else alert('Failed to save email: ' + e);
+  }
+}
+
 async function resetUserPassword(userId, username) {
   const pw = prompt(`Set a new password for "${username}":\n\n(They will use this to sign in. Minimum 6 characters.)`);
   if(pw === null) return; // cancelled
@@ -2303,6 +2451,15 @@ async function deleteUser(userId, username) {
 
 // ─── Boot: check session / invite token ──────────────────────────────────────
 function bootAuth() {
+  // Check for a password-reset token in URL
+  const resetTok = new URLSearchParams(window.location.search).get('reset');
+  if(resetTok) {
+    pendingResetToken = resetTok;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('reset-screen').classList.remove('hidden');
+    document.getElementById('layout-wrap').style.cssText = 'display:none;flex:1;';
+    return;
+  }
   // Check for invite token in URL
   const invite = new URLSearchParams(window.location.search).get('invite');
   if(invite) {
