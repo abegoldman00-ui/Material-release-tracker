@@ -1277,6 +1277,7 @@ function renderLog(){
 }
 // ─── Edit / delete bulk releases ─────────────────────────────────────────────
 function openEditBulk(bulkId){
+  if(!can('release')){ toast('You do not have permission to edit releases.'); return; }
   const group = releases.filter(r=>r.bulk_id===bulkId);
   if(!group.length) return;
   const first = group[0];
@@ -1318,6 +1319,7 @@ function openEditBulk(bulkId){
 }
 
 async function saveBulkEdit(bulkId, count){
+  if(!can('release')){ toast('You do not have permission to edit releases.'); return; }
   const date = document.getElementById('eb-date').value||null;
   const needby = document.getElementById('eb-needby').value||null;
   const supplier = document.getElementById('eb-supplier').value||null;
@@ -1344,6 +1346,7 @@ async function saveBulkEdit(bulkId, count){
 }
 
 async function deleteSingleFromBulk(releaseId, bulkId){
+  if(!can('release')){ toast('You do not have permission to edit releases.'); return; }
   if(!confirm('Remove this item from the bulk release?')) return;
   try{
     await sbDelete('releases', releaseId);
@@ -1358,6 +1361,7 @@ async function deleteSingleFromBulk(releaseId, bulkId){
 }
 
 async function deleteBulk(bulkId){
+  if(!can('release')){ toast('You do not have permission to delete releases.'); return; }
   const group = releases.filter(r=>r.bulk_id===bulkId);
   if(!confirm(`Delete all ${group.length} items in this bulk release? This cannot be undone.`)) return;
   try{
@@ -1453,6 +1457,7 @@ function buildItemModal(item,editingId=null){
 }
 
 function openEditModal(releaseId){
+  if(!can('release')){ toast('You do not have permission to edit releases.'); return; }
   const r=releases.find(r=>r.id===releaseId);
   if(!r)return;
   activeModal={type:'edit',releaseId};
@@ -1501,6 +1506,7 @@ async function saveNewRelease(itemId,category){
 }
 
 async function saveEdit(releaseId,itemId){
+  if(!can('release')){ toast('You do not have permission to edit releases.'); return; }
   const qty=parseInt(document.getElementById('e-qty').value);
   if(!qty||qty<=0){alert('Enter a valid quantity.');return;}
   setBtnLoading('save-btn',true,'Saving...');
@@ -1525,6 +1531,7 @@ async function saveEdit(releaseId,itemId){
 }
 
 async function deleteRelease(releaseId){
+  if(!can('release')){ toast('You do not have permission to delete releases.'); return; }
   if(!confirm('Delete this release?'))return;
   try{
     const rel=releases.find(r=>r.id===releaseId);
@@ -2335,6 +2342,7 @@ function renderBulkItems(){
 }
 
 async function submitBulkRelease(){
+  if(!can('release')){ toast('You do not have permission to release material.'); return; }
   if(!bulkItems.length){ alert('Add at least one item.'); return; }
   const bad = bulkItems.find(i=>!i.qty||i.qty<=0);
   if(bad){ alert(`Enter a valid quantity for "${bad.itemDesc}".`); return; }
