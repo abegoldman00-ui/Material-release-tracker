@@ -532,10 +532,10 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,.btn:focus-visib
         </div>
         <div class="tbl-wrap"><table>
           <thead><tr>
-            <th style="width:33%">Description</th><th style="width:13%">Category</th>
-            <th style="width:9%">BOM qty</th><th style="width:9%">Released</th>
-            <th style="width:13%">Progress</th><th style="width:10%">Status</th>
-            <th style="width:9%">Need by</th><th style="width:4%"></th>
+            <th style="width:25%">Description</th><th style="width:10%">Category</th>
+            <th style="width:8%">BOM qty</th><th style="width:8%">Released</th><th style="width:9%">Remaining</th>
+            <th style="width:11%">Progress</th><th style="width:9%">Status</th>
+            <th style="width:8%">Need by</th><th style="width:12%"></th>
           </tr></thead>
           <tbody id="detail-tbl"></tbody>
         </table></div>
@@ -1097,7 +1097,7 @@ function renderDetail(){
   const slice=filtered.slice((detailPage-1)*PAGE,detailPage*PAGE);
   const canEditQty=can('editJob');
   document.getElementById('detail-tbl').innerHTML=slice.length===0?
-    `<tr><td colspan="8" class="empty-state">No items match.</td></tr>`:
+    `<tr><td colspan="9" class="empty-state">No items match.</td></tr>`:
     slice.map(item=>{
       const co=coBadge(item);
       const titleCell=`<td class="mobile-title" title="${esc(item.desc)}">${esc(item.desc)}${co?' '+co:''}</td>`;
@@ -1105,13 +1105,14 @@ function renderDetail(){
         // Deduct line: removed scope, not released against
         return`<tr style="opacity:.85">
           ${titleCell}<td data-label="Category">${esc(item.cat.split(' ')[0])}</td>
-          <td data-label="BOM qty" style="color:var(--red)">−${item.totalQty.toLocaleString()}</td><td data-label="Released" style="color:var(--text3)">—</td>
+          <td data-label="BOM qty" style="color:var(--red)">−${item.totalQty.toLocaleString()}</td><td data-label="Released" style="color:var(--text3)">—</td><td data-label="Remaining" style="color:var(--text3)">—</td>
           <td data-label="Progress" style="color:var(--text3)">—</td>
           <td data-label="Status">${badge('Pending')}</td><td data-label="Need by" style="color:var(--text3)">—</td>
           <td class="mobile-actions">${canEditQty?`<button class="btn" style="padding:0 7px;height:24px;font-size:11px;color:var(--red)" onclick="removeChangeItem('${item.dbId}')" title="Remove this change-order line">✕</button>`:''}</td>
         </tr>`;
       }
       const rel=itemRelQty(item.id);
+      const remaining=item.totalQty-rel;
       const pct=item.totalQty>0?Math.round(rel/item.totalQty*100):0;
       const lastNeedBy=itemReleases(item.id).map(r=>r.need_by).filter(Boolean).sort().at(-1)||'—';
       const qtyCell=item.co==='qty_change'
@@ -1120,6 +1121,7 @@ function renderDetail(){
       return`<tr>
         ${titleCell}<td data-label="Category">${esc(item.cat.split(' ')[0])}</td>
         ${qtyCell}<td data-label="Released">${rel.toLocaleString()}</td>
+        <td data-label="Remaining" style="font-weight:600;color:${remaining<0?'var(--red)':remaining===0?'var(--green)':'var(--text)'}">${remaining.toLocaleString()}</td>
         <td data-label="Progress"><div style="display:inline-block;width:48px;height:4px;background:var(--surface2);border-radius:99px;overflow:hidden;vertical-align:middle"><div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px"></div></div>&nbsp;<span style="font-size:10px;color:var(--text3)">${pct}%</span></td>
         <td data-label="Status">${badge(itemStatus(item))}</td><td data-label="Need by" style="color:var(--text3)">${esc(lastNeedBy)}</td>
         <td class="mobile-actions"><div style="display:flex;gap:3px;justify-content:flex-end">${canEditQty?`<button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openQtyChange('${item.dbId}')" title="Change quantity (change order)">✎ Qty</button>`:''}<button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openModal('${esc(item.id)}')" title="Releases">&#9776;</button></div></td>
