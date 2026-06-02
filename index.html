@@ -22,13 +22,13 @@
   --sidebar-border:rgba(255,255,255,.1);
 }
 [data-theme="dark"]{
-  --bg:#111110;--surface:#1c1c1a;--surface2:#252523;--border:#2e2e2b;--border2:#3a3a36;
-  --text:#f0efe9;--text2:#a09e99;--text3:#6b6860;
-  --blue:#4a90d9;--blue-bg:#1a2a3d;--blue-border:#2a4a6e;
-  --green:#4a9e5a;--green-bg:#1a2e1e;--green-border:#2a5030;
-  --amber:#c49a30;--amber-bg:#2e2410;--amber-border:#5a480a;
-  --red:#d05050;--red-bg:#2e1a1a;--red-border:#5a2a2a;
-  --pink:#c060a0;--pink-bg:#2e1a28;--pink-border:#5a2a50;
+  --bg:#141413;--surface:#1f1f1d;--surface2:#2a2a27;--border:#3a3935;--border2:#4a4942;
+  --text:#f4f3ee;--text2:#c7c4bb;--text3:#9a958c;
+  --blue:#5b9fe3;--blue-bg:#1d2f44;--blue-border:#35557d;
+  --green:#5cb46c;--green-bg:#1d3324;--green-border:#356b40;
+  --amber:#d4a73f;--amber-bg:#332811;--amber-border:#6a560f;
+  --red:#e06a6a;--red-bg:#341d1d;--red-border:#6a3232;
+  --pink:#d074b4;--pink-bg:#341d2c;--pink-border:#6a3460;
   --sidebar-bg:#0e0e0d;
   --sidebar-border:rgba(255,255,255,.07);
 }
@@ -94,7 +94,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .cust-header{display:flex;align-items:center;gap:6px;padding:.5rem 1.1rem .3rem;cursor:pointer;user-select:none}
 .cust-header:hover .cust-name{color:rgba(255,255,255,.85)}
 .cust-caret{font-size:9px;color:rgba(255,255,255,.4);width:9px;flex-shrink:0}
-.cust-name{flex:1;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cust-name{flex:1;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cust-count{font-size:10px;color:rgba(255,255,255,.3);flex-shrink:0}
 .cust-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .cust-jobs{border-left:2px solid transparent}
@@ -366,6 +366,10 @@ th.sortable:hover{background:var(--border)}
   .summary-grid{grid-template-columns:1fr 1fr}
   .cat-grid{grid-template-columns:1fr}
 }
+
+/* ── Cleanup: consistent keyboard focus ring + tidier selects ── */
+input:focus-visible,select:focus-visible,textarea:focus-visible,.btn:focus-visible,.nav-btn:focus-visible,.sidebar-btn:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.toolbar select:focus,.toolbar input[type=date]:focus,#detail-co:focus{border-color:var(--blue)}
 </style>
 </head>
 <body>
@@ -463,7 +467,7 @@ th.sortable:hover{background:var(--border)}
       <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Menu">☰</button>
       <div>
         <div class="header-job" id="header-job-name">Select a job</div>
-        <div id="header-customer" style="font-size:12px;color:var(--text3);margin-top:1px"></div>
+        <div id="header-customer" style="font-size:13.5px;font-weight:500;color:var(--text2);margin-top:2px"></div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
