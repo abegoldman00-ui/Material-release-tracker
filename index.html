@@ -322,6 +322,19 @@ th.sortable:hover{background:var(--border)}
   td.mobile-fullcell::before{display:none}
   .pagination{justify-content:center}
 }
+
+/* ── Section 4: Header reflow (mobile) ── */
+@media(max-width:767px){
+  .app-header{flex-wrap:wrap;height:auto;min-height:52px;padding:6px .6rem;gap:8px;align-items:center}
+  .app-header>div:first-child{flex:1;min-width:0;gap:8px}
+  .app-header>div:last-child{display:contents!important}
+  .header-job{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sync-label{display:none}
+  .user-name,.user-role{display:none}
+  .user-badge{padding:2px;background:none;border:none;gap:0}
+  #main-nav{order:10;flex:1 0 100%;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;justify-content:flex-start;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px}
+  #main-nav .nav-btn{flex:0 0 auto;min-height:38px;padding:0 18px}
+}
 </style>
 </head>
 <body>
