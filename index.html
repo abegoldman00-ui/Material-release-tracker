@@ -275,6 +275,20 @@ th.sortable:hover{background:var(--border)}
 .sidebar-jobs{scrollbar-color:rgba(255,255,255,.18) transparent}
 
 @media(max-width:700px){.sidebar{width:180px}.summary-grid{grid-template-columns:1fr 1fr}.cat-grid{grid-template-columns:1fr 1fr}.content{padding:1rem}}
+
+/* ═══════════ Mobile responsiveness ═══════════ */
+/* ── Section 1: Sidebar slide-out drawer ── */
+.mobile-menu-btn{display:none}
+.sidebar-backdrop{display:none}
+@media(max-width:767px){
+  .main-area,.content,#job-tabs,.tab-content{min-width:0;max-width:100%}
+  .mobile-menu-btn{display:flex;align-items:center;justify-content:center;width:40px;height:40px;background:none;border:none;color:var(--text);font-size:21px;line-height:1;cursor:pointer;padding:0;flex-shrink:0;border-radius:8px}
+  .mobile-menu-btn:active{background:var(--surface2)}
+  .sidebar{position:fixed;top:0;left:0;height:100vh;height:100dvh;width:80%;max-width:280px;z-index:300;transform:translateX(-100%);transition:transform .25s ease;box-shadow:2px 0 20px rgba(0,0,0,.35)}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:290;opacity:0;pointer-events:none;transition:opacity .25s}
+  .sidebar-backdrop.open{opacity:1;pointer-events:auto}
+}
 </style>
 </head>
 <body>
@@ -363,11 +377,13 @@ th.sortable:hover{background:var(--border)}
     <button class="sidebar-btn" onclick="exportPdf()" id="export-pdf-btn" disabled>📄 Export PDF report</button>
   </div>
 </nav>
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
 
 <!-- ── MAIN AREA ── -->
 <div class="main-area">
   <header class="app-header">
     <div style="display:flex;align-items:center;gap:12px">
+      <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Menu">☰</button>
       <div>
         <div class="header-job" id="header-job-name">Select a job</div>
         <div id="header-customer" style="font-size:12px;color:var(--text3);margin-top:1px"></div>
@@ -726,6 +742,7 @@ async function selectJob(jobId){
   populateCatFilters();
   refreshAll();
   loadActivity();
+  if(window.innerWidth<768) closeSidebar(); // auto-close drawer on mobile
 }
 
 // Re-fetch the job list (and, for members, their assignments) and re-render the
@@ -859,6 +876,16 @@ function renderSidebar(){
 function toggleCustomer(key){
   collapsedCustomers[key]=!collapsedCustomers[key];
   renderSidebar();
+}
+
+// ── Mobile sidebar drawer ──
+function toggleSidebar(){
+  const sb=document.querySelector('.sidebar'); const bd=document.getElementById('sidebar-backdrop');
+  const open=sb.classList.toggle('open'); if(bd) bd.classList.toggle('open',open);
+}
+function closeSidebar(){
+  document.querySelector('.sidebar').classList.remove('open');
+  const bd=document.getElementById('sidebar-backdrop'); if(bd) bd.classList.remove('open');
 }
 
 function populateCatFilters(){
