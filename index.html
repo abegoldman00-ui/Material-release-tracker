@@ -335,6 +335,37 @@ th.sortable:hover{background:var(--border)}
   #main-nav{order:10;flex:1 0 100%;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;justify-content:flex-start;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px}
   #main-nav .nav-btn{flex:0 0 auto;min-height:38px;padding:0 18px}
 }
+
+/* ── Section 5: Touch targets, forms & dashboard polish ── */
+@media(max-width:767px){
+  /* Comfortable tap targets */
+  .btn{min-height:40px}
+  .nav-btn{min-height:40px}
+  .sidebar-btn{height:44px}
+  .job-item{padding:.7rem 1.1rem}
+  .result-item{padding:12px}
+  .result-item .btn{min-height:38px}
+  .cust-header{padding:.6rem 1.1rem .4rem}
+  /* Form inputs: 44px tall, 16px font (prevents iOS focus-zoom) */
+  .form-row input,.form-row select,.form-row textarea{min-height:44px;font-size:16px}
+  .form-row textarea{min-height:84px}
+  .login-form .form-row input{height:48px;font-size:16px}
+  .login-submit{height:50px}
+  .toolbar input[type=text],.toolbar select,.toolbar input[type=date]{min-height:44px;font-size:15px;flex:1 0 auto}
+  .toolbar{gap:8px}
+  .search-wrap input{height:48px;font-size:16px}
+  /* Bulk / preview / edit tables: bigger qty inputs (min-height beats inline height) */
+  .preview-table td input{min-height:42px;font-size:16px}
+  .preview-table-wrap{max-height:55vh}
+  /* Space out inline edit/delete buttons so they're not mis-tapped */
+  .release-item-head .btn{min-height:36px;padding:0 12px}
+  /* Dashboard grids */
+  .summary-grid,.cat-grid{gap:8px}
+}
+@media(max-width:479px){
+  .summary-grid{grid-template-columns:1fr 1fr}
+  .cat-grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
