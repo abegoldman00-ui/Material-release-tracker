@@ -301,6 +301,27 @@ th.sortable:hover{background:var(--border)}
   .modal-actions{position:sticky;bottom:0;background:var(--surface);margin:.9rem -1rem -1rem;padding:.85rem 1rem calc(.85rem + env(safe-area-inset-bottom));border-top:1px solid var(--border);z-index:2}
   .modal-actions .btn{min-height:44px;flex:1;justify-content:center}
 }
+
+/* ── Section 3: Tables become stacked cards ── */
+@media(max-width:767px){
+  .tbl-wrap{border:none;background:none;border-radius:0;overflow:visible;box-shadow:none}
+  table{table-layout:auto}
+  table thead{display:none}
+  table,tbody,tr,td{display:block;width:100%}
+  tbody tr{margin-bottom:10px;border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--surface)}
+  tbody td{border:none;padding:5px 2px;display:flex;justify-content:space-between;align-items:center;gap:12px;white-space:normal;text-align:right;font-size:13px;overflow:visible;text-overflow:clip}
+  tbody td::before{content:attr(data-label);font-weight:600;color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.03em;text-align:left;flex-shrink:0}
+  tbody td:empty{display:none}
+  td.mobile-title{display:block;text-align:left;font-weight:600;font-size:14px;padding:2px 2px 6px;border-bottom:1px solid var(--border);margin-bottom:4px;white-space:normal}
+  td.mobile-title::before{display:none}
+  td.mobile-actions{justify-content:flex-end;gap:8px;padding-top:8px;border-top:1px solid var(--border);margin-top:4px}
+  td.mobile-actions::before{display:none}
+  td.mobile-actions .btn{min-height:40px;padding:0 14px;font-size:12px}
+  td.mobile-actions>div{display:flex;gap:8px}
+  td.mobile-fullcell{display:block;text-align:left}
+  td.mobile-fullcell::before{display:none}
+  .pagination{justify-content:center}
+}
 </style>
 </head>
 <body>
@@ -980,11 +1001,11 @@ function renderDetail(){
       const pct=item.totalQty>0?Math.round(rel/item.totalQty*100):0;
       const lastNeedBy=itemReleases(item.id).map(r=>r.need_by).filter(Boolean).sort().at(-1)||'—';
       return`<tr>
-        <td title="${esc(item.desc)}">${esc(item.desc)}</td><td>${esc(item.cat.split(' ')[0])}</td>
-        <td>${item.totalQty.toLocaleString()}</td><td>${rel.toLocaleString()}</td>
-        <td><div style="display:inline-block;width:48px;height:4px;background:var(--surface2);border-radius:99px;overflow:hidden;vertical-align:middle"><div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px"></div></div>&nbsp;<span style="font-size:10px;color:var(--text3)">${pct}%</span></td>
-        <td>${badge(itemStatus(item))}</td><td style="color:var(--text3)">${esc(lastNeedBy)}</td>
-        <td><button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openModal('${esc(item.id)}')">&#9776;</button></td>
+        <td class="mobile-title" title="${esc(item.desc)}">${esc(item.desc)}</td><td data-label="Category">${esc(item.cat.split(' ')[0])}</td>
+        <td data-label="BOM qty">${item.totalQty.toLocaleString()}</td><td data-label="Released">${rel.toLocaleString()}</td>
+        <td data-label="Progress"><div style="display:inline-block;width:48px;height:4px;background:var(--surface2);border-radius:99px;overflow:hidden;vertical-align:middle"><div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px"></div></div>&nbsp;<span style="font-size:10px;color:var(--text3)">${pct}%</span></td>
+        <td data-label="Status">${badge(itemStatus(item))}</td><td data-label="Need by" style="color:var(--text3)">${esc(lastNeedBy)}</td>
+        <td class="mobile-actions"><button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openModal('${esc(item.id)}')">&#9776;</button></td>
       </tr>`;
     }).join('');
   const pag=document.getElementById('detail-pag');
@@ -1027,7 +1048,7 @@ function renderLog(){
       const bulkGroup = rows.filter(x=>x.bulk_id===r.bulk_id);
       const totalQty = bulkGroup.reduce((s,x)=>s+(parseInt(x.qty)||0),0);
       rendered.push(`<tr style="background:var(--blue-bg)">
-        <td colspan="9" style="padding:6px 11px">
+        <td class="mobile-fullcell" colspan="9" style="padding:6px 11px">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <span style="font-size:11px;font-weight:600;color:var(--blue)">📦 Bulk release — ${bulkGroup.length} items · ${totalQty.toLocaleString()} units total</span>
             <span style="font-size:11px;color:var(--text2)">${r.release_date||''} ${r.supplier?'· '+esc(r.supplier):''} ${r.status?'· '+r.status:''}</span>
@@ -1042,30 +1063,30 @@ function renderLog(){
       // Render each item in the bulk as an indented sub-row
       for(const br of bulkGroup){
         rendered.push(`<tr style="background:var(--blue-bg);opacity:.85">
-          <td style="padding-left:24px;font-size:12px" title="${esc(br.item_id)}">↳ ${esc(br.item_id)}</td>
-          <td><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((br.category||'').split(' ')[0])}</span></td>
-          <td style="font-weight:600">${(parseInt(br.qty)||0).toLocaleString()}</td>
-          <td style="font-family:'DM Mono',monospace;font-size:11px">${br.release_date||'—'}</td>
-          <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${br.need_by||'—'}</td>
-          <td style="color:var(--text2)">${esc(br.supplier||'—')}</td>
-          <td>${badge(br.status||'Released')}</td>
-          <td style="font-size:11px;color:var(--text3)" title="${esc(br.notes||'')}">${esc((br.notes||'').slice(0,22)+((br.notes||'').length>22?'…':''))}</td>
+          <td class="mobile-title" style="padding-left:24px;font-size:12px" title="${esc(br.item_id)}">↳ ${esc(br.item_id)}</td>
+          <td data-label="Category"><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((br.category||'').split(' ')[0])}</span></td>
+          <td data-label="Qty" style="font-weight:600">${(parseInt(br.qty)||0).toLocaleString()}</td>
+          <td data-label="Release date" style="font-family:'DM Mono',monospace;font-size:11px">${br.release_date||'—'}</td>
+          <td data-label="Need by" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${br.need_by||'—'}</td>
+          <td data-label="Supplier" style="color:var(--text2)">${esc(br.supplier||'—')}</td>
+          <td data-label="Status">${badge(br.status||'Released')}</td>
+          <td data-label="Notes" style="font-size:11px;color:var(--text3)" title="${esc(br.notes||'')}">${esc((br.notes||'').slice(0,22)+((br.notes||'').length>22?'…':''))}</td>
           <td></td>
         </tr>`);
       }
     } else if(!r.bulk_id){
       // Regular single release
       rendered.push(`<tr>
-        <td title="${esc(r.item_id)}"><span style="color:var(--text3);font-size:10px;margin-right:5px">${rowNum}</span>${esc(r.item_id)}</td>
-        <td><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((r.category||'').split(' ')[0])}</span></td>
-        <td style="font-weight:600">${(parseInt(r.qty)||0).toLocaleString()}</td>
-        <td style="font-family:'DM Mono',monospace;font-size:11px">${r.release_date||'—'}</td>
-        <td style="font-family:'DM Mono',monospace;font-size:11px;color:${r.need_by?'var(--text)':'var(--text3)'}">${r.need_by||'—'}</td>
-        <td style="color:var(--text2)">${esc(r.supplier||'—')}</td>
-        <td>${badge(r.status||'Released')}</td>
-        <td style="font-size:11px;color:var(--text3)" title="${esc(r.notes||'')}">${esc((r.notes||'').slice(0,22)+((r.notes||'').length>22?'…':''))}</td>
-        <td style="font-size:11px;color:var(--text3)">${r.logged_by_username?'<span style="background:var(--blue-bg);color:var(--blue);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">'+esc(r.logged_by_username)+'</span>':'—'}</td>
-        <td>${can('release')?`<div style="display:flex;gap:3px">
+        <td class="mobile-title" title="${esc(r.item_id)}"><span style="color:var(--text3);font-size:10px;margin-right:5px">${rowNum}</span>${esc(r.item_id)}</td>
+        <td data-label="Category"><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((r.category||'').split(' ')[0])}</span></td>
+        <td data-label="Qty" style="font-weight:600">${(parseInt(r.qty)||0).toLocaleString()}</td>
+        <td data-label="Release date" style="font-family:'DM Mono',monospace;font-size:11px">${r.release_date||'—'}</td>
+        <td data-label="Need by" style="font-family:'DM Mono',monospace;font-size:11px;color:${r.need_by?'var(--text)':'var(--text3)'}">${r.need_by||'—'}</td>
+        <td data-label="Supplier" style="color:var(--text2)">${esc(r.supplier||'—')}</td>
+        <td data-label="Status">${badge(r.status||'Released')}</td>
+        <td data-label="Notes" style="font-size:11px;color:var(--text3)" title="${esc(r.notes||'')}">${esc((r.notes||'').slice(0,22)+((r.notes||'').length>22?'…':''))}</td>
+        <td data-label="Logged by" style="font-size:11px;color:var(--text3)">${r.logged_by_username?'<span style="background:var(--blue-bg);color:var(--blue);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">'+esc(r.logged_by_username)+'</span>':'—'}</td>
+        <td class="mobile-actions">${can('release')?`<div style="display:flex;gap:3px">
           <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--blue)" onclick="openEditModal('${r.id}')">Edit</button>
           <button class="btn" style="padding:0 5px;height:24px;font-size:11px;color:var(--red)" onclick="deleteRelease('${r.id}')">✕</button>
         </div>`:''}</td>
