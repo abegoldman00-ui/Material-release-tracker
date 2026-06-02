@@ -503,6 +503,7 @@ th.sortable:hover{background:var(--border)}
       <div id="tab-dashboard" class="tab-content active">
         <div class="summary-grid" id="summary-cards"></div>
         <div class="cat-grid" id="cat-cards"></div>
+        <div id="co-summary"></div>
         <div style="font-size:13px;font-weight:600;margin-bottom:.55rem">Quick release — search any item</div>
         <div class="search-wrap">
           <input type="text" id="dash-search" placeholder="Search items..." oninput="renderSearch()">
@@ -521,6 +522,7 @@ th.sortable:hover{background:var(--border)}
             <option value="">All statuses</option>
             <option>Pending</option><option>Partial</option><option>Released</option><option>Delivered</option><option>Installed</option>
           </select>
+          <select id="detail-co" onchange="renderDetail()"><option value="">All scope</option></select>
         </div>
         <div class="tbl-wrap"><table>
           <thead><tr>
@@ -647,7 +649,20 @@ let collapsedCustomers={};   // customer name -> true if collapsed in sidebar
 let newJobAssignees=new Set(); // user ids checked in the new-job modal
 
 // ─── Derived helpers ─────────────────────────────────────────────────────────
-function currentItems(){ return (jobItems[currentJobId]||[]).map(i=>({id:i.item_name,desc:i.item_name,cat:i.category,totalQty:i.total_qty,dbId:i.id})); }
+function currentItems(){ return (jobItems[currentJobId]||[]).map(i=>({id:i.item_name,desc:i.item_name,cat:i.category,totalQty:i.total_qty,dbId:i.id,co:i.co_type||null,coLabel:i.change_order||null,origQty:i.original_qty})); }
+// ── Change-order helpers ──
+function itemSignedQty(it){ return it.co==='deduct' ? -(it.totalQty||0) : (it.totalQty||0); } // deducts subtract from scope
+function isReleasable(it){ return it.co!=='deduct'; }                                          // deduct lines aren't released against
+function bomTotal(items){ return items.reduce((s,i)=>s+itemSignedQty(i),0); }                  // revised total (net of deducts)
+function originalBomTotal(items){ return items.reduce((s,i)=> s + ((i.co==='adder'||i.co==='deduct')?0:(i.co==='qty_change'?(i.origQty||0):i.totalQty)), 0); }
+function jobChangeOrders(){ return [...new Set((jobItems[currentJobId]||[]).map(i=>i.change_order).filter(Boolean))].sort(); }
+function coTypeLabel(t){ return {adder:'Adder',deduct:'Deduct',qty_change:'Qty change'}[t]||''; }
+function coBadge(it){
+  if(!it.co) return '';
+  const cls={adder:'b-delivered',deduct:'b-pending',qty_change:'b-released'}[it.co]||'b-released';
+  const lbl=(it.coLabel?esc(it.coLabel)+' · ':'')+coTypeLabel(it.co);
+  return `<span class="badge ${cls}" style="font-size:9px" title="Change order">${lbl}</span>`;
+}
 function currentCats(){ return [...new Set((jobItems[currentJobId]||[]).map(i=>i.category))]; }
 function itemReleases(itemId){ return releases.filter(r=>r.item_id===itemId); }
 function itemRelQty(itemId){ return itemReleases(itemId).reduce((s,r)=>s+(parseInt(r.qty)||0),0); }
@@ -668,11 +683,12 @@ let jobReleasedQty = {}; // jobId -> total released qty across ALL its releases 
 
 function jobPct(jobId){
   const items=(jobItems[jobId]||[]);
-  const total=items.reduce((s,i)=>s+i.total_qty,0);
-  if(total===0)return 0;
-  // Current job uses live release data; other jobs use the cached per-job totals.
+  // Revised total: deducts subtract from scope
+  const total=items.reduce((s,i)=>s+(i.co_type==='deduct'?-(i.total_qty||0):(i.total_qty||0)),0);
+  if(total<=0)return 0;
+  // Current job uses live release data (exclude deduct lines); other jobs use cached per-job totals.
   const rel = (jobId===currentJobId)
-    ? items.reduce((s,i)=>s+itemRelQty(i.item_name),0)
+    ? items.filter(i=>i.co_type!=='deduct').reduce((s,i)=>s+itemRelQty(i.item_name),0)
     : (jobReleasedQty[jobId]||0);
   return Math.min(100, Math.round(rel/total*100));
 }
@@ -972,6 +988,13 @@ function populateCatFilters(){
     if(!el)return;
     el.innerHTML='<option value="">All categories</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join('');
   });
+  const coEl=document.getElementById('detail-co');
+  if(coEl){
+    const cos=jobChangeOrders();
+    coEl.innerHTML='<option value="">All scope</option><option value="__orig__">Original BOM</option>'+
+      (cos.length?'<option value="__co__">All change orders</option>':'')+
+      cos.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  }
 }
 
 // ─── Tabs ────────────────────────────────────────────────────────────────────
@@ -986,11 +1009,12 @@ function showTab(t){
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 function renderSummary(){
   const items=currentItems();
-  const total=items.length;
-  const anyRel=items.filter(i=>itemStatus(i)!=='Pending').length;
-  const fullRel=items.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length;
-  const totalQty=items.reduce((s,i)=>s+i.totalQty,0);
-  const relQtyTotal=items.reduce((s,i)=>s+itemRelQty(i.id),0);
+  const releasable=items.filter(isReleasable);   // deduct lines aren't tracked/released
+  const total=releasable.length;
+  const anyRel=releasable.filter(i=>itemStatus(i)!=='Pending').length;
+  const fullRel=releasable.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length;
+  const totalQty=bomTotal(items);                // revised total, net of deducts
+  const relQtyTotal=releasable.reduce((s,i)=>s+itemRelQty(i.id),0);
   const pct=totalQty>0?Math.round(relQtyTotal/totalQty*100):0;
   document.getElementById('summary-cards').innerHTML=
     `<div class="metric"><div class="metric-label">Overall released</div><div class="metric-value" style="color:var(--blue)">${pct}%</div><div class="metric-sub">${relQtyTotal.toLocaleString()} of ${totalQty.toLocaleString()} units</div></div>`+
@@ -1000,20 +1024,45 @@ function renderSummary(){
   const cats=currentCats();
   document.getElementById('cat-cards').innerHTML=cats.map(cat=>{
     const ci=items.filter(i=>i.cat===cat);
-    const t=ci.reduce((s,i)=>s+i.totalQty,0);
-    const r=ci.reduce((s,i)=>s+itemRelQty(i.id),0);
+    const cir=ci.filter(isReleasable);
+    const t=bomTotal(ci);
+    const r=cir.reduce((s,i)=>s+itemRelQty(i.id),0);
     const p=t>0?Math.round(r/t*100):0;
-    const started=ci.filter(i=>itemStatus(i)!=='Pending').length;
+    const started=cir.filter(i=>itemStatus(i)!=='Pending').length;
     const short=cat.replace(' Conduits & Fittings','').replace(' Items','').replace(' Fittings','');
-    return`<div class="cat-card"><div class="cat-card-name">${esc(short)}</div><div class="cat-card-sub">${started} of ${ci.length} started</div><div class="bar-track"><div class="bar-fill" style="width:${p}%"></div></div><div class="bar-pct">${p}%</div></div>`;
+    return`<div class="cat-card"><div class="cat-card-name">${esc(short)}</div><div class="cat-card-sub">${started} of ${cir.length} started</div><div class="bar-track"><div class="bar-fill" style="width:${p}%"></div></div><div class="bar-pct">${p}%</div></div>`;
   }).join('');
+  renderCoSummary(items);
+}
+
+// Original BOM vs Change Orders panel (only shown when the job has change-order items)
+function renderCoSummary(items){
+  const el=document.getElementById('co-summary');
+  if(!el) return;
+  const coItems=items.filter(i=>i.co);
+  if(!coItems.length){ el.innerHTML=''; return; }
+  const orig=originalBomTotal(items);
+  const adders=items.filter(i=>i.co==='adder').reduce((s,i)=>s+i.totalQty,0);
+  const deducts=items.filter(i=>i.co==='deduct').reduce((s,i)=>s+i.totalQty,0);
+  const qtyDelta=items.filter(i=>i.co==='qty_change').reduce((s,i)=>s+(i.totalQty-(i.origQty||0)),0);
+  const revised=bomTotal(items);
+  const cell=(label,val,color)=>`<div style="flex:1;min-width:90px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2)">${label}</div><div style="font-size:16px;font-weight:600;${color?'color:'+color:''}">${val}</div></div>`;
+  el.innerHTML=`<div style="font-size:13px;font-weight:600;margin:.2rem 0 .55rem">Scope — original vs change orders</div>
+    <div class="metric" style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:1.25rem">
+      ${cell('Original BOM',orig.toLocaleString())}
+      ${cell('Adders',(adders?'+':'')+adders.toLocaleString(),'var(--green)')}
+      ${cell('Deducts',(deducts?'−':'')+deducts.toLocaleString(),'var(--red)')}
+      ${cell('Qty changes',(qtyDelta>0?'+':'')+qtyDelta.toLocaleString(),qtyDelta<0?'var(--red)':'var(--green)')}
+      ${cell('Revised total',revised.toLocaleString(),'var(--blue)')}
+      <div style="flex:1;min-width:90px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2)">Change orders</div><div style="font-size:16px;font-weight:600">${jobChangeOrders().length||'—'}</div></div>
+    </div>`;
 }
 
 function renderSearch(){
   const q=(document.getElementById('dash-search')||{}).value||'';
   const el=document.getElementById('search-results');
   if(!q){el.innerHTML='';return;}
-  const items=currentItems();
+  const items=currentItems().filter(isReleasable);
   const matches=items.filter(i=>i.desc.toLowerCase().includes(q.toLowerCase())).slice(0,10);
   if(!matches.length){el.innerHTML='<p style="font-size:12px;color:var(--text3);padding:.4rem 0">No items found.</p>';return;}
   el.innerHTML=matches.map(item=>{
@@ -1034,22 +1083,40 @@ function renderDetail(){
   const q=(document.getElementById('detail-search')||{}).value||'';
   const cat=(document.getElementById('detail-cat')||{}).value||'';
   const status=(document.getElementById('detail-status')||{}).value||'';
-  const filtered=items.filter(i=>(!q||i.desc.toLowerCase().includes(q.toLowerCase()))&&(!cat||i.cat===cat)&&(!status||itemStatus(i)===status));
+  const co=(document.getElementById('detail-co')||{}).value||'';
+  const coMatch=i=> !co ? true : co==='__orig__' ? !i.co : co==='__co__' ? !!i.co : i.coLabel===co;
+  const filtered=items.filter(i=>(!q||i.desc.toLowerCase().includes(q.toLowerCase()))&&(!cat||i.cat===cat)&&(!status||(isReleasable(i)&&itemStatus(i)===status))&&coMatch(i));
   const totalPages=Math.max(1,Math.ceil(filtered.length/PAGE));
   if(detailPage>totalPages)detailPage=totalPages;
   const slice=filtered.slice((detailPage-1)*PAGE,detailPage*PAGE);
+  const canEditQty=can('editJob');
   document.getElementById('detail-tbl').innerHTML=slice.length===0?
     `<tr><td colspan="8" class="empty-state">No items match.</td></tr>`:
     slice.map(item=>{
+      const co=coBadge(item);
+      const titleCell=`<td class="mobile-title" title="${esc(item.desc)}">${esc(item.desc)}${co?' '+co:''}</td>`;
+      if(item.co==='deduct'){
+        // Deduct line: removed scope, not released against
+        return`<tr style="opacity:.85">
+          ${titleCell}<td data-label="Category">${esc(item.cat.split(' ')[0])}</td>
+          <td data-label="BOM qty" style="color:var(--red)">−${item.totalQty.toLocaleString()}</td><td data-label="Released" style="color:var(--text3)">—</td>
+          <td data-label="Progress" style="color:var(--text3)">—</td>
+          <td data-label="Status">${badge('Pending')}</td><td data-label="Need by" style="color:var(--text3)">—</td>
+          <td class="mobile-actions">${canEditQty?`<button class="btn" style="padding:0 7px;height:24px;font-size:11px;color:var(--red)" onclick="removeChangeItem('${item.dbId}')" title="Remove this change-order line">✕</button>`:''}</td>
+        </tr>`;
+      }
       const rel=itemRelQty(item.id);
       const pct=item.totalQty>0?Math.round(rel/item.totalQty*100):0;
       const lastNeedBy=itemReleases(item.id).map(r=>r.need_by).filter(Boolean).sort().at(-1)||'—';
+      const qtyCell=item.co==='qty_change'
+        ? `<td data-label="BOM qty">${item.totalQty.toLocaleString()} <span style="font-size:10px;color:var(--text3)" title="was ${(item.origQty||0).toLocaleString()}">(was ${(item.origQty||0).toLocaleString()})</span></td>`
+        : `<td data-label="BOM qty">${item.totalQty.toLocaleString()}</td>`;
       return`<tr>
-        <td class="mobile-title" title="${esc(item.desc)}">${esc(item.desc)}</td><td data-label="Category">${esc(item.cat.split(' ')[0])}</td>
-        <td data-label="BOM qty">${item.totalQty.toLocaleString()}</td><td data-label="Released">${rel.toLocaleString()}</td>
+        ${titleCell}<td data-label="Category">${esc(item.cat.split(' ')[0])}</td>
+        ${qtyCell}<td data-label="Released">${rel.toLocaleString()}</td>
         <td data-label="Progress"><div style="display:inline-block;width:48px;height:4px;background:var(--surface2);border-radius:99px;overflow:hidden;vertical-align:middle"><div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px"></div></div>&nbsp;<span style="font-size:10px;color:var(--text3)">${pct}%</span></td>
         <td data-label="Status">${badge(itemStatus(item))}</td><td data-label="Need by" style="color:var(--text3)">${esc(lastNeedBy)}</td>
-        <td class="mobile-actions"><button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openModal('${esc(item.id)}')">&#9776;</button></td>
+        <td class="mobile-actions"><div style="display:flex;gap:3px;justify-content:flex-end">${canEditQty?`<button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openQtyChange('${item.dbId}')" title="Change quantity (change order)">✎ Qty</button>`:''}<button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openModal('${esc(item.id)}')" title="Releases">&#9776;</button></div></td>
       </tr>`;
     }).join('');
   const pag=document.getElementById('detail-pag');
@@ -1058,6 +1125,63 @@ function renderDetail(){
      <button class="btn" onclick="detailPage--;renderDetail()" ${detailPage===1?'disabled':''} style="padding:0 9px">‹</button>
      <span>Page ${detailPage} of ${totalPages}</span>
      <button class="btn" onclick="detailPage++;renderDetail()" ${detailPage===totalPages?'disabled':''} style="padding:0 9px">›</button>`;
+}
+
+// ─── Change-order: per-item quantity change ──────────────────────────────────
+function openQtyChange(dbId){
+  if(!can('editJob')){ toast('You do not have permission to edit jobs.'); return; }
+  const row=(jobItems[currentJobId]||[]).find(i=>i.id===dbId);
+  if(!row)return;
+  const origDisplay=(row.co_type==='qty_change' && row.original_qty!=null)?row.original_qty:row.total_qty;
+  activeModal={type:'qtychange',dbId};
+  document.getElementById('modal-title').textContent='Change quantity — '+row.item_name;
+  document.getElementById('modal-body').innerHTML=`
+    <p style="font-size:12px;color:var(--text2);margin-bottom:.9rem">Record a change-order quantity for this item. The original quantity is preserved for reporting.</p>
+    <div class="mini-metrics">
+      <div class="mini-metric"><div class="mini-metric-label">Original qty</div><div class="mini-metric-value">${(origDisplay||0).toLocaleString()}</div></div>
+      <div class="mini-metric"><div class="mini-metric-label">Current qty</div><div class="mini-metric-value">${(row.total_qty||0).toLocaleString()}</div></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>New quantity</label><input type="number" id="qc-qty" value="${row.total_qty}" min="0"></div>
+      <div class="form-row"><label>Change order #</label><input type="text" id="qc-co" value="${esc(row.change_order||'')}" placeholder="e.g. CO-12"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-blue" id="qc-save" onclick="saveQtyChange('${dbId}')">Save change</button>
+    </div>`;
+  document.getElementById('overlay').classList.add('open');
+}
+
+async function saveQtyChange(dbId){
+  const row=(jobItems[currentJobId]||[]).find(i=>i.id===dbId);
+  if(!row)return;
+  const newQty=parseInt(document.getElementById('qc-qty').value);
+  if(isNaN(newQty)||newQty<0){ alert('Enter a valid quantity.'); return; }
+  const co=(document.getElementById('qc-co').value||'').trim()||null;
+  setBtnLoading('qc-save',true,'Saving...');
+  try{
+    const orig=(row.co_type==='qty_change' && row.original_qty!=null)?row.original_qty:row.total_qty;
+    const patch={ total_qty:newQty, co_type:'qty_change', original_qty:orig, change_order:co };
+    await sbPatch('job_items',dbId,patch);
+    Object.assign(row,patch);
+    closeModal();
+    populateCatFilters(); refreshAll(); await loadJobReleaseTotals(); renderSidebar();
+    toast('✓ Quantity updated');
+  }catch(e){ alert('Save failed: '+e); }
+  setBtnLoading('qc-save',false,'Save change');
+}
+
+async function removeChangeItem(dbId){
+  if(!can('editJob')){ toast('You do not have permission to edit jobs.'); return; }
+  const row=(jobItems[currentJobId]||[]).find(i=>i.id===dbId);
+  if(!row)return;
+  if(!confirm(`Remove this change-order line (${row.item_name})?`))return;
+  try{
+    await sbDelete('job_items',dbId);
+    jobItems[currentJobId]=(jobItems[currentJobId]||[]).filter(i=>i.id!==dbId);
+    populateCatFilters(); refreshAll(); await loadJobReleaseTotals(); renderSidebar();
+    toast('Change-order line removed');
+  }catch(e){ alert('Remove failed: '+e); }
 }
 
 // ─── Log tab ──────────────────────────────────────────────────────────────────
@@ -1858,6 +1982,19 @@ function openManageJob(jobId){
         <button class="btn btn-blue" style="margin-top:.3rem" onclick="addManualItem()">+ Add item</button>
       </div>
 
+      <div id="add-co-wrap" style="margin-top:.7rem">
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--text)">
+          <input type="checkbox" id="add-is-co" onchange="document.getElementById('add-co-fields').style.display=this.checked?'flex':'none'"> These items are a change order
+        </label>
+        <div id="add-co-fields" style="display:none;gap:8px;margin-top:.5rem">
+          <input type="text" id="add-co-number" placeholder="Change order # (e.g. CO-12)" style="flex:1;min-width:0;height:32px;padding:0 9px;font-size:13px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);color:var(--text)">
+          <select id="add-co-type" style="height:32px;padding:0 9px;font-size:13px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);color:var(--text)">
+            <option value="adder">Adder (new scope)</option>
+            <option value="deduct">Deduct (removed scope)</option>
+          </select>
+        </div>
+      </div>
+
       <div id="add-preview-section" style="display:none;margin-top:.6rem">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
           <span class="sec-label" style="margin:0" id="add-preview-count"></span>
@@ -2041,18 +2178,32 @@ function renderAddPreview(){
 async function saveNewItems(jobId){
   const valid=addBomItems.filter(i=>i.name&&i.qty>0);
   if(!valid.length){alert('No valid items to add.');return;}
+  // Change-order tagging (optional)
+  const isCo=(document.getElementById('add-is-co')||{}).checked;
+  const coNum=((document.getElementById('add-co-number')||{}).value||'').trim()||null;
+  const coType=isCo?((document.getElementById('add-co-type')||{}).value||'adder'):null;
   setBtnLoading('add-items-btn',true,'Saving...');
   try{
-    const rows=valid.map(i=>({job_id:jobId,item_name:i.name,category:i.category||inferCategory(i.name),total_qty:parseInt(i.qty)||0}));
-    for(let i=0;i<rows.length;i+=50) await sbPost('job_items',rows.slice(i,i+50));
+    const rows=valid.map(i=>{
+      const row={job_id:jobId,item_name:i.name,category:i.category||inferCategory(i.name),total_qty:parseInt(i.qty)||0};
+      if(coType){ row.co_type=coType; row.change_order=coNum; }
+      return row;
+    });
+    try{
+      for(let i=0;i<rows.length;i+=50) await sbPost('job_items',rows.slice(i,i+50));
+    }catch(err){
+      // change-order columns may not exist yet — retry without them
+      const plain=rows.map(({co_type,change_order,...r})=>r);
+      for(let i=0;i<plain.length;i+=50) await sbPost('job_items',plain.slice(i,i+50));
+    }
     // Refresh job items
     const allItems=await sbGet('job_items','order=created_at.asc&limit=10000');
     jobItems={};
     for(const item of allItems){if(!jobItems[item.job_id])jobItems[item.job_id]=[];jobItems[item.job_id].push(item);}
     closeModal();
-    if(jobId===currentJobId){populateCatFilters();refreshAll();}
+    if(jobId===currentJobId){populateCatFilters();refreshAll();await loadJobReleaseTotals();}
     renderSidebar();
-    toast(`✓ ${valid.length} items added to job`);
+    toast(`✓ ${valid.length} item${valid.length!==1?'s':''} added${coType?' ('+coTypeLabel(coType)+(coNum?' '+coNum:'')+')':''}`);
   }catch(e){alert('Failed to save items: '+e);}
   setBtnLoading('add-items-btn',false,'+ Add items to job');
 }
@@ -2139,7 +2290,7 @@ function renderBulkSearch(){
   const q = document.getElementById('br-search').value.trim().toLowerCase();
   const el = document.getElementById('br-search-results');
   if(!q){ el.innerHTML=''; return; }
-  const items = currentItems();
+  const items = currentItems().filter(isReleasable);
   const already = new Set(bulkItems.map(i=>i.itemId));
   const matches = items.filter(i => !already.has(i.id) && i.desc.toLowerCase().includes(q)).slice(0,8);
   if(!matches.length){ el.innerHTML='<p style="font-size:12px;color:var(--text3);padding:.3rem 0">No items found.</p>'; return; }
@@ -2238,19 +2389,26 @@ function exportExcel(){
   const wb=XLSX.utils.book_new();
   const cats=currentCats();
   const rows1=[[jobName+' — Material Release Tracker'],['Exported:',new Date().toLocaleDateString()],[],
-    ['Category','Total Items','BOM Qty','Released Qty','Remaining','% Released','Items Started','Fully Released','Pending']];
+    ['Category','Total Items','Revised BOM Qty','Released Qty','Remaining','% Released','Items Started','Fully Released','Pending']];
   for(const cat of cats){
     const ci=items.filter(i=>i.cat===cat);
-    const t=ci.reduce((s,i)=>s+i.totalQty,0);
-    const r=ci.reduce((s,i)=>s+itemRelQty(i.id),0);
-    rows1.push([cat,ci.length,t,r,t-r,t>0?Math.round(r/t*100)+'%':'0%',
-      ci.filter(i=>itemStatus(i)!=='Pending').length,
-      ci.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length,
-      ci.filter(i=>itemStatus(i)==='Pending').length]);
+    const cir=ci.filter(isReleasable);
+    const t=bomTotal(ci);
+    const r=cir.reduce((s,i)=>s+itemRelQty(i.id),0);
+    rows1.push([cat,cir.length,t,r,t-r,t>0?Math.round(r/t*100)+'%':'0%',
+      cir.filter(i=>itemStatus(i)!=='Pending').length,
+      cir.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length,
+      cir.filter(i=>itemStatus(i)==='Pending').length]);
   }
+  // Scope summary (original vs change orders)
+  rows1.push([],['Original BOM',originalBomTotal(items)],
+    ['Adders',items.filter(i=>i.co==='adder').reduce((s,i)=>s+i.totalQty,0)],
+    ['Deducts',-items.filter(i=>i.co==='deduct').reduce((s,i)=>s+i.totalQty,0)],
+    ['Qty changes',items.filter(i=>i.co==='qty_change').reduce((s,i)=>s+(i.totalQty-(i.origQty||0)),0)],
+    ['Revised total',bomTotal(items)]);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows1),'Summary');
-  const rows2=[['Description','Category','BOM Qty','Total Released','Remaining','% Released','Status']];
-  for(const item of items){const rel=itemRelQty(item.id);rows2.push([item.desc,item.cat,item.totalQty,rel,item.totalQty-rel,item.totalQty>0?Math.round(rel/item.totalQty*100)+'%':'0%',itemStatus(item)]);}
+  const rows2=[['Description','Category','BOM Qty','Change Order','CO Type','Original Qty','Total Released','Remaining','% Released','Status']];
+  for(const item of items){const rel=isReleasable(item)?itemRelQty(item.id):0;rows2.push([item.desc,item.cat,(item.co==='deduct'?-item.totalQty:item.totalQty),item.coLabel||'',coTypeLabel(item.co)||'',(item.origQty!=null?item.origQty:''),rel,item.totalQty-rel,(isReleasable(item)&&item.totalQty>0)?Math.round(rel/item.totalQty*100)+'%':'',isReleasable(item)?itemStatus(item):'—']);}
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows2),'All Line Items');
   const rows3=[['Item','Category','Qty Released','Release Date','Need-By','Supplier','Status','Notes','Logged By']];
   for(const r of releases)rows3.push([r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.need_by||'',r.supplier||'',r.status||'',r.notes||'',r.logged_by_username||'']);
@@ -2265,24 +2423,26 @@ function exportPdf(){
   const jobName=job?job.name:'Job';
   const customer=job&&job.customer?job.customer:'';
   const items=currentItems();
+  const releasable=items.filter(isReleasable);
   const cats=currentCats();
-  const totalQty=items.reduce((s,i)=>s+i.totalQty,0);
-  const relQtyTotal=items.reduce((s,i)=>s+itemRelQty(i.id),0);
+  const totalQty=bomTotal(items);
+  const relQtyTotal=releasable.reduce((s,i)=>s+itemRelQty(i.id),0);
   const pct=totalQty>0?Math.round(relQtyTotal/totalQty*100):0;
-  const started=items.filter(i=>itemStatus(i)!=='Pending').length;
-  const fullRel=items.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length;
-  const pending=items.length-started;
+  const started=releasable.filter(i=>itemStatus(i)!=='Pending').length;
+  const fullRel=releasable.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length;
+  const pending=releasable.length-started;
   const logo=(document.querySelector('.sidebar-logo img')||{}).src||'';
   const now=new Date().toLocaleString();
 
   const catRows=cats.map(cat=>{
     const ci=items.filter(i=>i.cat===cat);
-    const t=ci.reduce((s,i)=>s+i.totalQty,0);
-    const r=ci.reduce((s,i)=>s+itemRelQty(i.id),0);
+    const cir=ci.filter(isReleasable);
+    const t=bomTotal(ci);
+    const r=cir.reduce((s,i)=>s+itemRelQty(i.id),0);
     const p=t>0?Math.round(r/t*100):0;
     return `<tr>
       <td>${esc(cat)}</td>
-      <td class="num">${ci.length}</td>
+      <td class="num">${cir.length}</td>
       <td class="num">${t.toLocaleString()}</td>
       <td class="num">${r.toLocaleString()}</td>
       <td class="num">${(t-r).toLocaleString()}</td>
