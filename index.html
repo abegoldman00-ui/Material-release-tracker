@@ -504,12 +504,14 @@ th.sortable:hover{background:var(--border)}
         <div class="summary-grid" id="summary-cards"></div>
         <div class="cat-grid" id="cat-cards"></div>
         <div id="co-summary"></div>
-        <div style="font-size:13px;font-weight:600;margin-bottom:.55rem">Quick release — search any item</div>
-        <div class="search-wrap">
-          <input type="text" id="dash-search" placeholder="Search items..." oninput="renderSearch()">
-          <svg style="position:absolute;right:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2;pointer-events:none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <div id="quick-release-section">
+          <div style="font-size:13px;font-weight:600;margin-bottom:.55rem">Quick release — search any item</div>
+          <div class="search-wrap">
+            <input type="text" id="dash-search" placeholder="Search items..." oninput="renderSearch()">
+            <svg style="position:absolute;right:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2;pointer-events:none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <div id="search-results" class="result-list"></div>
         </div>
-        <div id="search-results" class="result-list"></div>
         <div style="font-size:13px;font-weight:600;margin:1.4rem 0 .55rem">Recent activity</div>
         <div id="activity-feed" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.4rem .9rem"><div style="font-size:12px;color:var(--text3);padding:.5rem 0">Loading…</div></div>
       </div>
@@ -2636,6 +2638,7 @@ function showApp() {
   // Role-based UI gating
   document.getElementById('admin-btn').style.display = can('manageUsers') ? 'inline-flex' : 'none';
   document.getElementById('bulk-release-btn').style.display = can('release') ? 'flex' : 'none';
+  const qrs=document.getElementById('quick-release-section'); if(qrs) qrs.style.display = can('release') ? '' : 'none';
   const showCreate = can('createJob');
   document.getElementById('new-job-btn').style.display = showCreate ? 'flex' : 'none';
   document.getElementById('no-job-create-btn').style.display = showCreate ? '' : 'none';
