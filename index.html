@@ -1662,10 +1662,19 @@ async function handleFileSelect(file){
       await parseExcelFile(file);
     } else if(ext==='csv'){
       await parseCsvFile(file);
-    } else if(['png','jpg','jpeg','webp','pdf'].includes(ext)){
-      await parseWithClaude(file, ext);
+    } else if(ext==='pdf'){
+      showAiStatus('loading','Reading order PDF…');
+      const found=await parseOrderPdf(file);
+      if(!found.length){ showAiStatus('error','No line items found in this PDF. Try pasting the text instead.'); resetDropZone(); return; }
+      parsedBomItems=found;
+      const nm=document.getElementById('nj-name'); if(nm && !nm.value.trim()) nm.value=file.name.replace(/\.[^.]+$/,'');
+      showAiStatus('done',`Found ${found.length} items`);
+      finishFileParse(file.name, found.length);
+    } else if(['png','jpg','jpeg','webp'].includes(ext)){
+      showAiStatus('error','Photo import isn’t available — please upload a PDF, Excel, or CSV.');
+      resetDropZone();
     } else {
-      alert('Unsupported file type. Please use PDF, Excel, CSV, or an image.');
+      alert('Unsupported file type. Please use PDF, Excel, or CSV.');
       resetDropZone();
     }
   }catch(e){
@@ -1728,6 +1737,71 @@ function extractItemsFromRows(rows){
 }
 
 // ─── Claude API parsing (images + PDFs) ──────────────────────────────────────
+// ─── PDF order-acknowledgment parser (client-side, no AI) ────────────────────
+const PDFJS_SRC='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDFJS_WORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let _pdfjsLoading=null;
+function ensurePdfJs(){
+  if(window.pdfjsLib) return Promise.resolve();
+  if(_pdfjsLoading) return _pdfjsLoading;
+  _pdfjsLoading=new Promise((res,rej)=>{
+    const s=document.createElement('script'); s.src=PDFJS_SRC;
+    s.onload=()=>{ try{pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS_WORKER;}catch(e){} res(); };
+    s.onerror=()=>rej(new Error('Could not load the PDF reader'));
+    document.head.appendChild(s);
+  });
+  return _pdfjsLoading;
+}
+// Lines to ignore entirely (vendor/order metadata, ship/price/status noise)
+const PDF_NOISE=/ITEM PROCURED|Special Order Item|Sub for:|Estimated Ship Date|In Process|Invoice #|Continued on|This is not an Invoice|Emailed By|Printed By|An asterisk|Order Summary|Quotation|ORDER DATE|EXPIRATION DATE|PAGE NO|Open \/ Partially|SOLD TO|SHIP TO|QUOTE TO|PRICE BR|FREIGHT|CUSTOMER (NUMBER|ORDER|PO)|JOB\/RELEASE|JOB NAME|OUTSIDE SALES|WRITER|TERMS|SHIP VIA|ULE GROUP|GREEN STREET|HACKENSACK|Phone 1-201|^LN#$/i;
+const PDF_STOP=/Deleted Line Items|^Subtotal\b|Amount Due/i;          // stop reading at these
+const QTY_RE=/^(\d[\d,]*)\s*(ft|ea|rd|m|mft|lf|pc|cl|roll|box|bg|ct|c)$/i; // qty must have a unit
+const PRICE_RE=/^[\d,]+\.\d+(\/[a-zA-Z]+)?$/;
+
+async function parseOrderPdf(file){
+  await ensurePdfJs();
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const items=[]; let open=null, stopped=false;
+  const flush=()=>{ if(open){ open.name=(open.name||'').replace(/\s+/g,' ').trim(); if(open.name && open.qty>0) items.push(open); } open=null; };
+  for(let p=1; p<=pdf.numPages && !stopped; p++){
+    const tc=await (await pdf.getPage(p)).getTextContent();
+    // cluster tokens into visual rows by y (with tolerance — columns can be ~1px off)
+    const toks=tc.items.filter(it=>it.str&&it.str.trim()).map(it=>({x:it.transform[4],y:it.transform[5],s:it.str.trim()}));
+    toks.sort((a,b)=> b.y-a.y || a.x-b.x);
+    const rows=[]; let cur=null;
+    for(const t of toks){ if(!cur||Math.abs(cur.y-t.y)>4){ cur={y:t.y,toks:[t]}; rows.push(cur);} else cur.toks.push(t); }
+    rows.forEach(r=>r.toks.sort((a,b)=>a.x-b.x));
+    // locate the column header row to get x-positions
+    const hdr=rows.find(r=>{const txt=r.toks.map(t=>t.s).join(' '); return /description/i.test(txt)&&/order\s*qty/i.test(txt);});
+    if(!hdr) continue;
+    const fx=re=>{const t=hdr.toks.find(t=>re.test(t.s)); return t?t.x:null;};
+    const qtyX=fx(/order\s*qty/i), descX=fx(/description/i), priceX=fx(/unit\s*price/i)||fx(/price/i);
+    if(qtyX==null||descX==null) continue;
+    const rightOfQty=hdr.toks.map(t=>t.x).filter(x=>x>qtyX+5).sort((a,b)=>a-b);
+    const qtyLo=qtyX-30, qtyHi=rightOfQty.length?rightOfQty[0]:qtyX+60;
+    const descLo=descX-115, descHi=(priceX!=null?priceX:descX+260)-18;
+    for(const r of rows){
+      if(r.y>=hdr.y-1) continue;                 // header row & page furniture above it
+      const rowText=r.toks.map(t=>t.s).join(' ').trim();
+      if(!rowText) continue;
+      if(PDF_STOP.test(rowText)){ stopped=true; break; }
+      if(PDF_NOISE.test(rowText)) continue;
+      // Order Qty (must sit in the qty column and carry a unit)
+      let qty=null;
+      for(const t of r.toks){ if(t.x>=qtyLo&&t.x<qtyHi){ const m=t.s.match(QTY_RE); if(m&&m[2]){ qty=parseInt(m[1].replace(/,/g,'')); break; } } }
+      // Description (in the description column, excluding prices and the qty token)
+      const descText=r.toks.filter(t=> t.x>=descLo&&t.x<descHi && !PRICE_RE.test(t.s) && !(t.x>=qtyLo&&t.x<qtyHi&&QTY_RE.test(t.s)))
+        .map(t=>t.s).join(' ').replace(/\s+/g,' ').trim();
+      if(qty!=null){ flush(); open={name:descText,qty,category:''}; }
+      else if(descText && open){ open.name=(open.name+' '+descText).trim(); }
+    }
+  }
+  flush();
+  items.forEach(i=>{ i.category=inferCategory(i.name); });
+  return items;
+}
+
 async function parseWithClaude(file, ext){
   showAiStatus('loading','Reading your BOM with AI...');
   const base64=await fileToBase64(file);
@@ -2131,21 +2205,18 @@ async function handleAddFileSelect(file){
       const rows=text.split('\n').map(r=>r.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
       addBomItems=extractItemsFromRows(rows);
       dz.innerHTML=`<div class="file-chip">📄 ${esc(file.name)}</div>`;
-    } else if(['png','jpg','jpeg','webp','pdf'].includes(ext)){
-      // Use Claude
+    } else if(ext==='pdf'){
       const statusEl=document.getElementById('add-ai-status');
       statusEl.style.display='block';
-      statusEl.innerHTML='<div class="ai-status"><span class="spinner"></span> Reading with AI...</div>';
-      const base64=await fileToBase64(file);
-      const isPdf=ext==='pdf';
-      const mediaType=isPdf?'application/pdf':({png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp'}[ext]||'image/jpeg');
-      const contentBlock=isPdf?{type:'document',source:{type:'base64',media_type:mediaType,data:base64}}:{type:'image',source:{type:'base64',media_type:mediaType,data:base64}};
-      const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,messages:[{role:'user',content:[contentBlock,{type:'text',text:'Extract ALL line items from this BOM. Respond ONLY with a JSON array: [{"name":"...","category":"...","qty":0}]. No markdown.'}]}]})});
-      const data=await resp.json();
-      const text=data.content?.find(b=>b.type==='text')?.text||'';
-      addBomItems=JSON.parse(text.replace(/```json|```/g,'').trim());
-      statusEl.innerHTML=`<div class="ai-status" style="background:var(--green-bg);border-color:var(--green-border);color:var(--green)">✓ AI found ${addBomItems.length} items</div>`;
+      statusEl.innerHTML='<div class="ai-status"><span class="spinner"></span> Reading order PDF…</div>';
+      addBomItems=await parseOrderPdf(file);
+      statusEl.innerHTML=`<div class="ai-status" style="background:var(--green-bg);border-color:var(--green-border);color:var(--green)">✓ Found ${addBomItems.length} items</div>`;
       dz.innerHTML=`<div class="file-chip">📄 ${esc(file.name)}</div>`;
+    } else if(['png','jpg','jpeg','webp'].includes(ext)){
+      const statusEl=document.getElementById('add-ai-status');
+      statusEl.style.display='block';
+      statusEl.innerHTML='<div class="ai-status" style="background:var(--red-bg);border-color:var(--red-border);color:var(--red)">⚠️ Photo import isn’t available — use a PDF, Excel, or CSV.</div>';
+      return;
     }
     renderAddPreview();
   }catch(e){alert('Failed to parse: '+e);}
