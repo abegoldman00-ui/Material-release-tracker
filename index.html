@@ -374,8 +374,18 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,.btn:focus-visib
 /* ── Customer (read-only) portal view ── */
 [data-app-role="customer"] .internal-col{display:none!important}      /* hide internal columns/cells */
 [data-app-role="customer"] #log-table{table-layout:auto}             /* let remaining columns fill the width */
+.cust-portal-hero{display:none;flex-wrap:wrap;align-items:center;gap:20px;justify-content:space-between;background:linear-gradient(135deg,#1a5fa8,#2f78c4);color:#fff;border-radius:16px;padding:1.6rem 1.7rem;margin-bottom:1.3rem;box-shadow:0 8px 24px rgba(26,95,168,.28)}
 [data-app-role="customer"] .cust-portal-hero{display:flex}
-.cust-portal-hero{display:none}
+.hero-left{min-width:200px}
+.hero-job{font-size:23px;font-weight:600;letter-spacing:-.02em;line-height:1.15}
+.hero-cust{font-size:13px;opacity:.85;margin-top:4px}
+.hero-right{flex:1;min-width:240px;max-width:440px}
+.hero-pct-row{display:flex;align-items:baseline;gap:8px;margin-bottom:9px}
+.hero-pct{font-size:36px;font-weight:700;line-height:1}
+.hero-pct-label{font-size:13px;opacity:.85;font-weight:500}
+.hero-bar{height:10px;background:rgba(255,255,255,.25);border-radius:99px;overflow:hidden}
+.hero-bar-fill{height:100%;background:#fff;border-radius:99px;transition:width .6s ease}
+.hero-units{font-size:12px;opacity:.9;margin-top:9px}
 </style>
 </head>
 <body>
@@ -1056,6 +1066,24 @@ function renderSummary(){
     return`<div class="cat-card"><div class="cat-card-name">${esc(short)}</div><div class="cat-card-sub">${started} of ${cir.length} started</div><div class="bar-track"><div class="bar-fill" style="width:${p}%"></div></div><div class="bar-pct">${p}%</div></div>`;
   }).join('');
   renderCoSummary(items);
+  renderCustomerHero(jobs.find(j=>j.id===currentJobId), pct, relQtyTotal, totalQty);
+}
+
+// Premium client-portal headline (customer role only)
+function renderCustomerHero(job, pct, rel, total){
+  const el=document.getElementById('cust-hero');
+  if(!el) return;
+  if(!isCustomer() || !job){ el.innerHTML=''; return; }
+  el.innerHTML=`
+    <div class="hero-left">
+      <div class="hero-job">${esc(job.name)}</div>
+      <div class="hero-cust">${job.customer?esc(job.customer)+' · ':''}Material release status</div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-pct-row"><div class="hero-pct">${pct}%</div><div class="hero-pct-label">complete</div></div>
+      <div class="hero-bar"><div class="hero-bar-fill" style="width:${pct}%"></div></div>
+      <div class="hero-units">${rel.toLocaleString()} of ${total.toLocaleString()} units released</div>
+    </div>`;
 }
 
 // Original BOM vs Change Orders panel (only shown when the job has change-order items)
