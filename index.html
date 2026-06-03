@@ -920,31 +920,39 @@ async function syncCurrentUser(){
   }
 }
 
-setInterval(async()=>{
-  if(!currentUser)return;
-  try{
-    await syncCurrentUser();
-    if(!currentUser) return;   // signed out (account removed)
-    await syncJobsList();
-    if(currentJobId){
-      const job=jobs.find(j=>j.id===currentJobId);
-      if(job){
-        setJobHeader(job);     // reflect live renames / customer changes
-        releases=await sbGet('releases',`job_id=eq.${encodeURIComponent(currentJobId)}&order=created_at.asc&limit=5000`);
-        refreshAll();
-        loadActivity();
-      }else{
-        // current job was deleted or access revoked → drop back to no-job state
-        currentJobId=null; releases=[];
-        document.getElementById('no-job-state').style.display='flex';
-        document.getElementById('job-tabs').style.display='none';
-        document.getElementById('main-nav').style.display='none';
-        setJobHeader(null);
+// Safety-net sync. Self-schedules: backs off to 60s while Realtime is actively
+// delivering events, speeds back up to 15s if events stop (disconnect/disabled).
+let _rtLastEvent=0;
+async function pollTick(){
+  if(currentUser){
+    try{
+      await syncCurrentUser();
+      if(currentUser){
+        await syncJobsList();
+        if(currentJobId){
+          const job=jobs.find(j=>j.id===currentJobId);
+          if(job){
+            setJobHeader(job);     // reflect live renames / customer changes
+            releases=await sbGet('releases',`job_id=eq.${encodeURIComponent(currentJobId)}&order=created_at.asc&limit=5000`);
+            refreshAll();
+            loadActivity();
+          }else{
+            // current job was deleted or access revoked → drop back to no-job state
+            currentJobId=null; releases=[];
+            document.getElementById('no-job-state').style.display='flex';
+            document.getElementById('job-tabs').style.display='none';
+            document.getElementById('main-nav').style.display='none';
+            setJobHeader(null);
+          }
+        }
+        setSyncStatus('ok','Live');
       }
-    }
-    setSyncStatus('ok','Live');
-  }catch(e){setSyncStatus('err','Sync error');}
-},15000);
+    }catch(e){setSyncStatus('err','Sync error');}
+  }
+  const realtimeFresh = (Date.now()-_rtLastEvent) < 90000;   // got a live event in last 90s
+  setTimeout(pollTick, realtimeFresh ? 60000 : 15000);
+}
+setTimeout(pollTick, 15000);
 
 // ─── Realtime (instant updates via Supabase websockets) ─────────────────────
 // Sits on top of the 15s safety-net poll. Requires the supabase_realtime
@@ -961,14 +969,15 @@ function startRealtime(){
   if(!window.supabase || !supabase.createClient){ setTimeout(startRealtime,1000); return; } // wait for the CDN lib
   _rtStarted=true;
   try{
+    const stamp=fn=>(...a)=>{ _rtLastEvent=Date.now(); fn(...a); };
     const client = supabase.createClient(SB_URL, SB_KEY);
     client.channel('ule-live')
-      .on('postgres_changes',{event:'*',schema:'public',table:'jobs'}, rtJobs)
-      .on('postgres_changes',{event:'*',schema:'public',table:'job_items'}, rtJobs)
-      .on('postgres_changes',{event:'*',schema:'public',table:'job_assignments'}, ()=>{ rtJobs(); rtUser(); })
-      .on('postgres_changes',{event:'*',schema:'public',table:'releases'}, rtReleases)
-      .on('postgres_changes',{event:'*',schema:'public',table:'activity'}, rtActivity)
-      .on('postgres_changes',{event:'*',schema:'public',table:'users'}, rtUser)
+      .on('postgres_changes',{event:'*',schema:'public',table:'jobs'}, stamp(rtJobs))
+      .on('postgres_changes',{event:'*',schema:'public',table:'job_items'}, stamp(rtJobs))
+      .on('postgres_changes',{event:'*',schema:'public',table:'job_assignments'}, stamp(()=>{ rtJobs(); rtUser(); }))
+      .on('postgres_changes',{event:'*',schema:'public',table:'releases'}, stamp(rtReleases))
+      .on('postgres_changes',{event:'*',schema:'public',table:'activity'}, stamp(rtActivity))
+      .on('postgres_changes',{event:'*',schema:'public',table:'users'}, stamp(rtUser))
       .subscribe((status)=>{ realtimeOk=(status==='SUBSCRIBED'); if(realtimeOk) setSyncStatus('ok','Live'); });
   }catch(e){ _rtStarted=false; console.error('realtime init failed',e); }
 }
