@@ -613,6 +613,7 @@ function emailjsReady(){ return !!(window.emailjs && EMAILJS.publicKey && EMAILJ
 const ROLES = ['admin','pm','coordinator','customer'];
 const ROLE_LABELS = { admin:'Admin', pm:'Project Manager', coordinator:'Job Coordinator', customer:'Customer', member:'Job Coordinator' };
 function userRole(){ return currentUser ? (currentUser.role||'') : ''; }
+function isCustomer(){ return userRole()==='customer'; }   // read-only client portal role
 function can(action){
   const r = userRole();
   switch(action){
@@ -710,6 +711,23 @@ async function loadJobReleaseTotals(){
   }catch(e){ /* leave previous totals on failure */ }
 }
 
+// Returns null for admins (see everything), or a Set of allowed job ids for
+// everyone else. FAIL-CLOSED: if the assignment lookup fails, returns an empty
+// set so a non-admin never accidentally sees jobs they aren't assigned to.
+async function allowedJobIds(){
+  if(currentUser && currentUser.role==='admin') return null;
+  try{
+    const asn = await sbGet('job_assignments', `user_id=eq.${currentUser.id}&select=job_id`);
+    return new Set(asn.map(a=>a.job_id));
+  }catch(e){ console.error('assignment load failed (locking down)',e); return new Set(); }
+}
+// Restrict the in-memory jobs + jobItems to the allowed set (non-admins)
+function scopeToAllowed(allowed){
+  if(!allowed) return;
+  jobs = jobs.filter(j=>allowed.has(j.id));
+  for(const id of Object.keys(jobItems)){ if(!allowed.has(id)) delete jobItems[id]; }
+}
+
 // ─── Sync ────────────────────────────────────────────────────────────────────
 function setSyncStatus(state,text){
   document.getElementById('sync-dot').className='sync-dot '+state;
@@ -769,14 +787,8 @@ async function loadAll(){
       jobs = refreshed;
     }
 
-    // Members only see jobs they're assigned to
-    if(currentUser && currentUser.role!=='admin'){
-      try{
-        const asn = await sbGet('job_assignments', `user_id=eq.${currentUser.id}&select=job_id`);
-        const allowed = new Set(asn.map(a=>a.job_id));
-        jobs = jobs.filter(j=>allowed.has(j.id));
-      }catch(e){ console.error('assignment load failed',e); }
-    }
+    // Non-admins only see jobs they're assigned to (fail-closed)
+    const allowed = await allowedJobIds();
 
     // Load all job_items
     const allItems = await sbGet('job_items','order=created_at.asc&limit=10000');
@@ -785,6 +797,7 @@ async function loadAll(){
       if(!jobItems[item.job_id]) jobItems[item.job_id]=[];
       jobItems[item.job_id].push(item);
     }
+    scopeToAllowed(allowed); // restrict jobs + jobItems to the allowed set
 
     // Released totals per job (so the sidebar shows % for every job)
     await loadJobReleaseTotals();
@@ -814,6 +827,7 @@ async function seedDefaultJob(){
 }
 
 async function selectJob(jobId){
+  if(!jobs.some(j=>j.id===jobId)){ return; } // only jobs in the (role-filtered) list
   currentJobId=jobId;
   setSyncStatus('syncing','Loading...');
   try{
@@ -847,18 +861,12 @@ async function selectJob(jobId){
 // Re-fetch the job list (and, for members, their assignments) and re-render the
 // sidebar — lets newly created/assigned jobs appear without a manual refresh.
 async function syncJobsList(){
-  let jobsData = await sbGet('jobs','order=created_at.asc');
-  if(currentUser && currentUser.role!=='admin'){
-    try{
-      const asn = await sbGet('job_assignments', `user_id=eq.${currentUser.id}&select=job_id`);
-      const allowed = new Set(asn.map(a=>a.job_id));
-      jobsData = jobsData.filter(j=>allowed.has(j.id));
-    }catch(e){ /* job_assignments may not exist yet */ }
-  }
-  jobs = jobsData;
+  const allowed = await allowedJobIds();           // fail-closed for non-admins
+  jobs = await sbGet('jobs','order=created_at.asc');
   const allItems = await sbGet('job_items','order=created_at.asc&limit=10000');
   jobItems = {};
   for(const item of allItems){ if(!jobItems[item.job_id]) jobItems[item.job_id]=[]; jobItems[item.job_id].push(item); }
+  scopeToAllowed(allowed);                          // restrict jobs + jobItems to allowed set
   await loadJobReleaseTotals();
   renderSidebar();
 }
@@ -2791,6 +2799,7 @@ function logout() {
 
 // ─── Admin panel ──────────────────────────────────────────────────────────────
 async function openAdminPanel() {
+  if(!can('manageUsers')){ toast('You do not have access to the admin panel.'); return; }
   activeModal = {type:'admin'};
   document.getElementById('modal-title').textContent = '⚙ Admin Panel';
   document.getElementById('modal-body').innerHTML = '<div class="empty-state"><span class="spinner"></span> Loading...</div>';
@@ -2854,6 +2863,7 @@ async function openAdminPanel() {
 }
 
 async function generateInvite() {
+  if(!can('manageUsers')) return;
   try {
     // Manual UUID v4 — works without HTTPS
     const token = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'.replace(/x/g, () =>
@@ -2896,6 +2906,7 @@ function copyToClipboard(text) {
 }
 
 async function changeUserRole(userId, role){
+  if(!can('manageUsers')) return;
   if(!ROLES.includes(role)) return;
   try{
     await sbPatch('users', userId, {role});
@@ -2905,6 +2916,7 @@ async function changeUserRole(userId, role){
 }
 
 async function adminAssign(userId, jobId){
+  if(!can('manageUsers')) return;
   try{
     await sbPost('job_assignments',{job_id:jobId,user_id:userId});
     openAdminPanel();
@@ -2912,6 +2924,7 @@ async function adminAssign(userId, jobId){
 }
 
 async function adminUnassign(assignmentId){
+  if(!can('manageUsers')) return;
   try{
     await sbDelete('job_assignments',assignmentId);
     openAdminPanel();
@@ -2919,6 +2932,7 @@ async function adminUnassign(assignmentId){
 }
 
 async function setUserEmail(userId, username, current) {
+  if(!can('manageUsers')) return;
   const email = prompt(`Email address for "${username}" (used for password-reset links):`, current||'');
   if(email === null) return; // cancelled
   const trimmed = email.trim();
@@ -2934,6 +2948,7 @@ async function setUserEmail(userId, username, current) {
 }
 
 async function resetUserPassword(userId, username) {
+  if(!can('manageUsers')) return;
   const pw = prompt(`Set a new password for "${username}":\n\n(They will use this to sign in. Minimum 6 characters.)`);
   if(pw === null) return; // cancelled
   if(pw.length < 6) { alert('Password must be at least 6 characters.'); return; }
@@ -2946,6 +2961,7 @@ async function resetUserPassword(userId, username) {
 }
 
 async function deleteUser(userId, username) {
+  if(!can('manageUsers')) return;
   if(!confirm(`Remove ${username} from the team? They won't be able to log in.`)) return;
   try {
     await sbDelete('users', userId);
