@@ -370,6 +370,12 @@ th.sortable:hover{background:var(--border)}
 /* ── Cleanup: consistent keyboard focus ring + tidier selects ── */
 input:focus-visible,select:focus-visible,textarea:focus-visible,.btn:focus-visible,.nav-btn:focus-visible,.sidebar-btn:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
 .toolbar select:focus,.toolbar input[type=date]:focus,#detail-co:focus{border-color:var(--blue)}
+
+/* ── Customer (read-only) portal view ── */
+[data-app-role="customer"] .internal-col{display:none!important}      /* hide internal columns/cells */
+[data-app-role="customer"] #log-table{table-layout:auto}             /* let remaining columns fill the width */
+[data-app-role="customer"] .cust-portal-hero{display:flex}
+.cust-portal-hero{display:none}
 </style>
 </head>
 <body>
@@ -505,6 +511,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,.btn:focus-visib
     <!-- Job tabs (hidden until job selected) -->
     <div id="job-tabs" style="display:none">
       <div id="tab-dashboard" class="tab-content active">
+        <div class="cust-portal-hero" id="cust-hero"></div>
         <div class="summary-grid" id="summary-cards"></div>
         <div class="cat-grid" id="cat-cards"></div>
         <div id="co-summary"></div>
@@ -516,8 +523,10 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,.btn:focus-visib
           </div>
           <div id="search-results" class="result-list"></div>
         </div>
-        <div style="font-size:13px;font-weight:600;margin:1.4rem 0 .55rem">Recent activity</div>
-        <div id="activity-feed" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.4rem .9rem"><div style="font-size:12px;color:var(--text3);padding:.5rem 0">Loading…</div></div>
+        <div id="activity-section">
+          <div style="font-size:13px;font-weight:600;margin:1.4rem 0 .55rem">Recent activity</div>
+          <div id="activity-feed" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.4rem .9rem"><div style="font-size:12px;color:var(--text3);padding:.5rem 0">Loading…</div></div>
+        </div>
       </div>
 
       <div id="tab-detail" class="tab-content">
@@ -560,12 +569,12 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,.btn:focus-visib
             <th class="sortable" style="width:10%" data-col="category" onclick="sortLog('category')">Category</th>
             <th class="sortable" style="width:7%" data-col="qty" onclick="sortLog('qty')">Qty</th>
             <th class="sortable" style="width:10%" data-col="release_date" onclick="sortLog('release_date')">Release date</th>
-            <th class="sortable" style="width:10%" data-col="need_by" onclick="sortLog('need_by')">Need by</th>
-            <th class="sortable" style="width:11%" data-col="supplier" onclick="sortLog('supplier')">Supplier</th>
+            <th class="sortable internal-col" style="width:10%" data-col="need_by" onclick="sortLog('need_by')">Need by</th>
+            <th class="sortable internal-col" style="width:11%" data-col="supplier" onclick="sortLog('supplier')">Supplier</th>
             <th class="sortable" style="width:9%" data-col="status" onclick="sortLog('status')">Status</th>
-            <th style="width:7%">Notes</th>
-            <th style="width:8%">Logged by</th>
-            <th style="width:7%"></th>
+            <th class="internal-col" style="width:7%">Notes</th>
+            <th class="internal-col" style="width:8%">Logged by</th>
+            <th class="internal-col" style="width:7%"></th>
           </tr></thead>
           <tbody id="log-tbl"></tbody>
         </table></div>
@@ -1235,8 +1244,8 @@ function renderLog(){
         <td class="mobile-fullcell" colspan="9" style="padding:6px 11px">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <span style="font-size:11px;font-weight:600;color:var(--blue)">📦 Bulk release — ${bulkGroup.length} items · ${totalQty.toLocaleString()} units total</span>
-            <span style="font-size:11px;color:var(--text2)">${r.release_date||''} ${r.supplier?'· '+esc(r.supplier):''} ${r.status?'· '+r.status:''}</span>
-            ${r.logged_by_username?`<span style="background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">${esc(r.logged_by_username)}</span>`:''}
+            <span style="font-size:11px;color:var(--text2)">${r.release_date||''} ${(r.supplier&&!isCustomer())?'· '+esc(r.supplier):''} ${r.status?'· '+r.status:''}</span>
+            ${(r.logged_by_username&&!isCustomer())?`<span style="background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">${esc(r.logged_by_username)}</span>`:''}
             ${can('release')?`<div style="margin-left:auto;display:flex;gap:4px">
               <button class="btn btn-blue" style="height:24px;padding:0 9px;font-size:11px" onclick="openEditBulk('${esc(r.bulk_id)}')">Edit bulk</button>
               <button class="btn" style="height:24px;padding:0 7px;font-size:11px;color:var(--red)" onclick="deleteBulk('${esc(r.bulk_id)}')">🗑 Delete all</button>
@@ -1251,11 +1260,11 @@ function renderLog(){
           <td data-label="Category"><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((br.category||'').split(' ')[0])}</span></td>
           <td data-label="Qty" style="font-weight:600">${(parseInt(br.qty)||0).toLocaleString()}</td>
           <td data-label="Release date" style="font-family:'DM Mono',monospace;font-size:11px">${br.release_date||'—'}</td>
-          <td data-label="Need by" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${br.need_by||'—'}</td>
-          <td data-label="Supplier" style="color:var(--text2)">${esc(br.supplier||'—')}</td>
+          <td class="internal-col" data-label="Need by" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${br.need_by||'—'}</td>
+          <td class="internal-col" data-label="Supplier" style="color:var(--text2)">${esc(br.supplier||'—')}</td>
           <td data-label="Status">${badge(br.status||'Released')}</td>
-          <td data-label="Notes" style="font-size:11px;color:var(--text3)" title="${esc(br.notes||'')}">${esc((br.notes||'').slice(0,22)+((br.notes||'').length>22?'…':''))}</td>
-          <td></td>
+          <td class="internal-col" data-label="Notes" style="font-size:11px;color:var(--text3)" title="${esc(br.notes||'')}">${esc((br.notes||'').slice(0,22)+((br.notes||'').length>22?'…':''))}</td>
+          <td class="internal-col"></td>
         </tr>`);
       }
     } else if(!r.bulk_id){
@@ -1265,12 +1274,12 @@ function renderLog(){
         <td data-label="Category"><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((r.category||'').split(' ')[0])}</span></td>
         <td data-label="Qty" style="font-weight:600">${(parseInt(r.qty)||0).toLocaleString()}</td>
         <td data-label="Release date" style="font-family:'DM Mono',monospace;font-size:11px">${r.release_date||'—'}</td>
-        <td data-label="Need by" style="font-family:'DM Mono',monospace;font-size:11px;color:${r.need_by?'var(--text)':'var(--text3)'}">${r.need_by||'—'}</td>
-        <td data-label="Supplier" style="color:var(--text2)">${esc(r.supplier||'—')}</td>
+        <td class="internal-col" data-label="Need by" style="font-family:'DM Mono',monospace;font-size:11px;color:${r.need_by?'var(--text)':'var(--text3)'}">${r.need_by||'—'}</td>
+        <td class="internal-col" data-label="Supplier" style="color:var(--text2)">${esc(r.supplier||'—')}</td>
         <td data-label="Status">${badge(r.status||'Released')}</td>
-        <td data-label="Notes" style="font-size:11px;color:var(--text3)" title="${esc(r.notes||'')}">${esc((r.notes||'').slice(0,22)+((r.notes||'').length>22?'…':''))}</td>
-        <td data-label="Logged by" style="font-size:11px;color:var(--text3)">${r.logged_by_username?'<span style="background:var(--blue-bg);color:var(--blue);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">'+esc(r.logged_by_username)+'</span>':'—'}</td>
-        <td class="mobile-actions">${can('release')?`<div style="display:flex;gap:3px">
+        <td class="internal-col" data-label="Notes" style="font-size:11px;color:var(--text3)" title="${esc(r.notes||'')}">${esc((r.notes||'').slice(0,22)+((r.notes||'').length>22?'…':''))}</td>
+        <td class="internal-col" data-label="Logged by" style="font-size:11px;color:var(--text3)">${r.logged_by_username?'<span style="background:var(--blue-bg);color:var(--blue);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">'+esc(r.logged_by_username)+'</span>':'—'}</td>
+        <td class="mobile-actions internal-col">${can('release')?`<div style="display:flex;gap:3px">
           <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--blue)" onclick="openEditModal('${r.id}')">Edit</button>
           <button class="btn" style="padding:0 5px;height:24px;font-size:11px;color:var(--red)" onclick="deleteRelease('${r.id}')">✕</button>
         </div>`:''}</td>
@@ -1438,10 +1447,10 @@ function buildItemModal(item,editingId=null){
         </div>
         <div class="release-meta">
           ${r.release_date?`<span>Released: ${r.release_date}</span>`:''}
-          ${r.need_by?`<span>Need by: ${r.need_by}</span>`:''}
-          ${r.supplier?`<span>Supplier: ${esc(r.supplier)}</span>`:''}
-          ${r.notes?`<span>Note: ${esc(r.notes)}</span>`:''}
-          ${r.logged_by_username?`<span>By: <strong>${esc(r.logged_by_username)}</strong></span>`:''}
+          ${(r.need_by&&!isCustomer())?`<span>Need by: ${r.need_by}</span>`:''}
+          ${(r.supplier&&!isCustomer())?`<span>Supplier: ${esc(r.supplier)}</span>`:''}
+          ${(r.notes&&!isCustomer())?`<span>Note: ${esc(r.notes)}</span>`:''}
+          ${(r.logged_by_username&&!isCustomer())?`<span>By: <strong>${esc(r.logged_by_username)}</strong></span>`:''}
         </div></div>`;
     }).join('');
   document.getElementById('modal-body').innerHTML=`
@@ -2721,9 +2730,11 @@ function showApp() {
   document.getElementById('user-name-display').textContent = currentUser.username;
   document.getElementById('user-role-display').textContent = ROLE_LABELS[currentUser.role] || 'Member';
   // Role-based UI gating
+  document.documentElement.setAttribute('data-app-role', currentUser.role||'');
   document.getElementById('admin-btn').style.display = can('manageUsers') ? 'inline-flex' : 'none';
   document.getElementById('bulk-release-btn').style.display = can('release') ? 'flex' : 'none';
   const qrs=document.getElementById('quick-release-section'); if(qrs) qrs.style.display = can('release') ? '' : 'none';
+  const acts=document.getElementById('activity-section'); if(acts) acts.style.display = isCustomer() ? 'none' : '';  // hide internal team activity from customers
   const showCreate = can('createJob');
   document.getElementById('new-job-btn').style.display = showCreate ? 'flex' : 'none';
   document.getElementById('no-job-create-btn').style.display = showCreate ? '' : 'none';
