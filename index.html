@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ULETrack — by ULE Group</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%231a5fa8'/%3E%3Ctext%20x='32'%20y='46'%20font-family='Arial,Helvetica,sans-serif'%20font-size='42'%20font-weight='700'%20fill='%23ffffff'%20text-anchor='middle'%3EU%3C/text%3E%3Ccircle%20cx='49'%20cy='16'%20r='6.5'%20fill='%239acd32'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%231a5fa8'/%3E%3Ctext%20x='32'%20y='46'%20font-family='Arial,Helvetica,sans-serif'%20font-size='42'%20font-weight='700'%20fill='%23ffffff'%20text-anchor='middle'%3EU%3C/text%3E%3Ccircle%20cx='49'%20cy='16'%20r='6.5'%20fill='%239acd32'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2838,7 +2840,7 @@ async function submitPasswordReset(){
       err.textContent='This reset link has expired or already been used. Request a new one.'; err.style.display='block';
       btn.disabled=false; btn.textContent='Update password'; return;
     }
-    await sbPatch('users', r.user_id, {password_hash:hashPassword(pw)});
+    await sbPatch('users', r.user_id, {password_hash:hashPassword(pw.toLowerCase())});
     await sbPatch('password_resets', r.id, {used_at:new Date().toISOString()});
     window.history.replaceState({},'',window.location.pathname);
     pendingResetToken=null;
@@ -2883,10 +2885,14 @@ async function submitLogin() {
   btn.disabled = true; btn.textContent = 'Signing in...';
   errEl.style.display = 'none';
   try {
-    const hash = hashPassword(password);
-    const users = await sbGet('users', `username=eq.${encodeURIComponent(username)}&password_hash=eq.${encodeURIComponent(hash)}&select=id,username,role`);
-    if (!users.length) { errEl.textContent = 'Invalid username or password.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Sign in'; return; }
-    currentUser = users[0];
+    // Case-insensitive username match (ilike, then verify exactly ignoring case)
+    const matches = await sbGet('users', `username=ilike.${encodeURIComponent(username)}&select=id,username,role,password_hash`);
+    const u = matches.find(x => (x.username||'').toLowerCase() === username.toLowerCase());
+    // Case-insensitive password: accept the lowercased hash (how passwords are stored now)
+    // or the exact hash (legacy passwords set before this change)
+    const ok = u && [hashPassword(password.toLowerCase()), hashPassword(password)].includes(u.password_hash);
+    if (!ok) { errEl.textContent = 'Invalid username or password.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Sign in'; return; }
+    currentUser = {id:u.id, username:u.username, role:u.role};
     try { localStorage.setItem('ule-session', JSON.stringify({id:currentUser.id,username:currentUser.username,role:currentUser.role})); } catch(e){}
     showApp();
     loadAll();
@@ -2909,9 +2915,9 @@ async function submitRegister() {
   errEl.style.display = 'none';
   try {
     // Check username not taken
-    const existing = await sbGet('users', `username=eq.${encodeURIComponent(username)}&select=id`);
-    if(existing.length) { errEl.textContent='Username already taken.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Create account'; return; }
-    const hash = hashPassword(password);
+    const existing = await sbGet('users', `username=ilike.${encodeURIComponent(username)}&select=id,username`);
+    if(existing.some(x=>(x.username||'').toLowerCase()===username.toLowerCase())) { errEl.textContent='Username already taken.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Create account'; return; }
+    const hash = hashPassword(password.toLowerCase());
     const token = new URLSearchParams(window.location.search).get('invite');
     // Validate invite token
     const invites = await sbGet('invites', `token=eq.${encodeURIComponent(token)}&select=id,used_at`);
@@ -3136,7 +3142,7 @@ async function resetUserPassword(userId, username) {
   if(pw === null) return; // cancelled
   if(pw.length < 6) { alert('Password must be at least 6 characters.'); return; }
   try {
-    await sbPatch('users', userId, {password_hash: hashPassword(pw)});
+    await sbPatch('users', userId, {password_hash: hashPassword(pw.toLowerCase())});
     const self = (currentUser && userId === currentUser.id) ? ' (your own login)' : '';
     toast(`✓ Password reset for ${username}`);
     alert(`Password for "${username}" has been reset${self}.\n\nNew password: ${pw}\n\nShare it with them securely — it is not stored in readable form.`);
