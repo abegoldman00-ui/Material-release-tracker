@@ -477,7 +477,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,.btn:focus-visib
     <button class="sidebar-btn green" id="new-job-btn" onclick="openNewJobModal()">+ New job</button>
     <button class="sidebar-btn" id="bulk-release-btn" onclick="openBulkRelease()" disabled style="background:rgba(26,95,168,.4);border-color:rgba(26,95,168,.5)">📦 Bulk release</button>
     <button class="sidebar-btn" onclick="exportExcel()" id="export-btn" disabled>↓ Export Excel</button>
-    <button class="sidebar-btn" onclick="exportPdf()" id="export-pdf-btn" disabled>📄 Export PDF report</button>
+    <button class="sidebar-btn" onclick="openReportModal()" id="export-pdf-btn" disabled>📄 Export PDF report</button>
   </div>
 </nav>
 <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
@@ -2654,103 +2654,212 @@ function exportExcel(){
 }
 
 // ─── PDF report (print-ready) ─────────────────────────────────────────────────
-function exportPdf(){
+// Report builder — let the user choose what goes on the PDF
+function openReportModal(){
+  if(!currentJobId){ return; }
+  const job=jobs.find(j=>j.id===currentJobId); if(!job)return;
+  const cust=isCustomer();
+  const hasCO=currentItems().some(i=>i.co);
+  activeModal={type:'report'};
+  document.getElementById('modal-title').textContent='📄 Build PDF report';
+  const opt=(id,label,checked,hint)=>`<label style="display:flex;gap:10px;align-items:flex-start;padding:9px 2px;cursor:pointer;border-bottom:1px solid var(--border)"><input type="checkbox" id="${id}" ${checked?'checked':''} style="margin-top:2px;width:16px;height:16px;flex-shrink:0;accent-color:var(--blue)"><span><span style="font-size:13px;font-weight:500;color:var(--text)">${label}</span>${hint?`<br><span style="font-size:11px;color:var(--text3)">${hint}</span>`:''}</span></label>`;
+  document.getElementById('modal-body').innerHTML=`
+    <p style="font-size:12px;color:var(--text2);margin-bottom:.7rem">Choose what to include in the report for <strong>${esc(job.name)}</strong>${job.customer?' · '+esc(job.customer):''}.</p>
+    <div class="sec-label">Sections</div>
+    ${opt('rep-kpis','Overview & progress',true,'Overall % complete, units released, item counts')}
+    ${opt('rep-status','Status breakdown',true,'How many items are pending / partial / released / delivered / installed')}
+    ${opt('rep-categories','Category breakdown',true,'Released vs remaining for each category, with progress bars')}
+    ${opt('rep-items','Full item list',false,'Every BOM line with released, remaining & status (longer report)')}
+    ${opt('rep-log','Release history',true,'Each release: item, qty, date'+(cust?'':', supplier, status'))}
+    ${(hasCO&&!cust)?opt('rep-co','Change-order scope',true,'Original BOM vs adders / deducts / qty changes'):''}
+    ${cust?'':`<div class="sec-label" style="margin-top:.9rem">Detail level</div>${opt('rep-internal','Include internal details',false,'Supplier, logged-by, and notes in the release history')}`}
+    <div class="sec-label" style="margin-top:.9rem">Options</div>
+    <div class="form-row"><label>Report note (optional)</label><input type="text" id="rep-note" placeholder="e.g. Prepared for weekly delivery review"></div>
+    <div class="form-grid">
+      <div class="form-row"><label>Releases from (optional)</label><input type="date" id="rep-from"></div>
+      <div class="form-row"><label>Releases to (optional)</label><input type="date" id="rep-to"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-blue" onclick="generateReport()">Generate PDF</button>
+    </div>`;
+  document.getElementById('overlay').classList.add('open');
+}
+function generateReport(){
+  const chk=id=>{const e=document.getElementById(id);return e?e.checked:false;};
+  const opts={
+    kpis:chk('rep-kpis'), status:chk('rep-status'), categories:chk('rep-categories'),
+    items:chk('rep-items'), log:chk('rep-log'), co:chk('rep-co'),
+    internal: chk('rep-internal') && !isCustomer(),
+    note:((document.getElementById('rep-note')||{}).value||'').trim(),
+    from:(document.getElementById('rep-from')||{}).value||'',
+    to:(document.getElementById('rep-to')||{}).value||''
+  };
+  closeModal();
+  exportPdf(opts);
+}
+
+function exportPdf(opts){
   if(!currentJobId)return;
+  opts=opts||{kpis:1,status:1,categories:1,log:1};
   const job=jobs.find(j=>j.id===currentJobId);
   const jobName=job?job.name:'Job';
   const customer=job&&job.customer?job.customer:'';
+  const custColor=customer?customerColor(customer):'#1a5fa8';
+  const cust=isCustomer();
+  const internal=opts.internal && !cust;
   const items=currentItems();
   const releasable=items.filter(isReleasable);
   const cats=currentCats();
   const totalQty=bomTotal(items);
   const relQtyTotal=releasable.reduce((s,i)=>s+itemRelQty(i.id),0);
+  const remainingTotal=Math.max(0,totalQty-relQtyTotal);
   const pct=totalQty>0?Math.round(relQtyTotal/totalQty*100):0;
   const started=releasable.filter(i=>itemStatus(i)!=='Pending').length;
   const fullRel=releasable.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length;
   const pending=releasable.length-started;
   const logo=(document.querySelector('.sidebar-logo img')||{}).src||'';
   const now=new Date().toLocaleString();
+  const by=currentUser?currentUser.username:'';
 
-  const catRows=cats.map(cat=>{
-    const ci=items.filter(i=>i.cat===cat);
-    const cir=ci.filter(isReleasable);
-    const t=bomTotal(ci);
-    const r=cir.reduce((s,i)=>s+itemRelQty(i.id),0);
-    const p=t>0?Math.round(r/t*100):0;
-    return `<tr>
-      <td>${esc(cat)}</td>
-      <td class="num">${cir.length}</td>
-      <td class="num">${t.toLocaleString()}</td>
-      <td class="num">${r.toLocaleString()}</td>
-      <td class="num">${(t-r).toLocaleString()}</td>
-      <td class="num"><div class="pbar"><div class="pfill" style="width:${p}%"></div></div>${p}%</td>
-    </tr>`;
-  }).join('');
+  // status breakdown
+  const sc={Pending:0,Partial:0,Released:0,Delivered:0,Installed:0};
+  releasable.forEach(i=>{ const s=itemStatus(i); if(sc[s]!=null) sc[s]++; });
+  const statusColor={Pending:'#8a5c00',Partial:'#8a2060',Released:'#1a5fa8',Delivered:'#2d7a3a',Installed:'#1a6e3a'};
+  const statusBg={Pending:'#fdf3df',Partial:'#fce8f3',Released:'#e8f0f9',Delivered:'#e7f4e9',Installed:'#e8f5ee'};
 
-  const cust=isCustomer();
-  const logCols=cust?5:8;
-  const relSorted=[...releases].sort((a,b)=>String(b.release_date||'').localeCompare(String(a.release_date||'')));
-  const logRows=relSorted.length?relSorted.map(r=>`<tr${r.bulk_id?' class="bulk"':''}>
-      <td>${esc(r.item_id)}${r.bulk_id?' <span class="tag">bulk</span>':''}</td>
-      <td>${esc((r.category||'').split(' ')[0])}</td>
-      <td class="num">${(parseInt(r.qty)||0).toLocaleString()}</td>
-      <td>${esc(r.release_date||'—')}</td>
-      ${cust?'':`<td>${esc(r.need_by||'—')}</td>
-      <td>${esc(r.supplier||'—')}</td>`}
-      <td>${esc(r.status||'Released')}</td>
-      ${cust?'':`<td>${esc(r.logged_by_username||'—')}</td>`}
-    </tr>`).join(''):`<tr><td colspan="${logCols}" style="text-align:center;color:#888;padding:14px">No releases logged yet.</td></tr>`;
+  // ── sections ──
+  let body='';
+
+  if(opts.kpis){
+    body+=`<div class="kpis">
+      <div class="kpi accent"><div class="lbl">Overall released</div><div class="val">${pct}%</div><div class="sub">${relQtyTotal.toLocaleString()} of ${totalQty.toLocaleString()} units</div>
+        <div class="pbar big"><div class="pfill" style="width:${pct}%"></div></div></div>
+      <div class="kpi"><div class="lbl">Items started</div><div class="val">${started}<span class="of"> / ${releasable.length}</span></div></div>
+      <div class="kpi"><div class="lbl">Fully released</div><div class="val">${fullRel}</div></div>
+      <div class="kpi"><div class="lbl">Remaining</div><div class="val">${remainingTotal.toLocaleString()}</div><div class="sub">units to release</div></div>
+    </div>`;
+  }
+
+  if(opts.status){
+    const order=['Pending','Partial','Released','Delivered','Installed'];
+    body+=`<h2>Status breakdown</h2><div class="pills">`+
+      order.map(s=>`<div class="pill" style="background:${statusBg[s]};color:${statusColor[s]};border-color:${statusColor[s]}33"><span class="pill-n">${sc[s]}</span> ${s}</div>`).join('')+
+      `</div>`;
+  }
+
+  if(opts.categories){
+    const catRows=cats.map(cat=>{
+      const ci=items.filter(i=>i.cat===cat), cir=ci.filter(isReleasable);
+      const t=bomTotal(ci), r=cir.reduce((s,i)=>s+itemRelQty(i.id),0), p=t>0?Math.round(r/t*100):0;
+      return `<tr><td>${esc(cat)}</td><td class="num">${cir.length}</td><td class="num">${t.toLocaleString()}</td><td class="num">${r.toLocaleString()}</td><td class="num">${(t-r).toLocaleString()}</td><td class="num"><div class="pbar"><div class="pfill" style="width:${p}%"></div></div>${p}%</td></tr>`;
+    }).join('');
+    body+=`<h2>Category breakdown</h2><table>
+      <thead><tr><th>Category</th><th class="num">Items</th><th class="num">BOM qty</th><th class="num">Released</th><th class="num">Remaining</th><th class="num">Progress</th></tr></thead>
+      <tbody>${catRows}</tbody>
+      <tfoot><tr><td>Total</td><td class="num">${releasable.length}</td><td class="num">${totalQty.toLocaleString()}</td><td class="num">${relQtyTotal.toLocaleString()}</td><td class="num">${remainingTotal.toLocaleString()}</td><td class="num">${pct}%</td></tr></tfoot>
+    </table>`;
+  }
+
+  if(opts.co && !cust){
+    const adders=items.filter(i=>i.co==='adder').reduce((s,i)=>s+i.totalQty,0);
+    const deducts=items.filter(i=>i.co==='deduct').reduce((s,i)=>s+i.totalQty,0);
+    const qd=items.filter(i=>i.co==='qty_change').reduce((s,i)=>s+(i.totalQty-(i.origQty||0)),0);
+    if(adders||deducts||qd){
+      body+=`<h2>Change-order scope</h2><table><tbody>
+        <tr><td>Original BOM</td><td class="num">${originalBomTotal(items).toLocaleString()}</td></tr>
+        <tr><td>Adders</td><td class="num">+${adders.toLocaleString()}</td></tr>
+        <tr><td>Deducts</td><td class="num">−${deducts.toLocaleString()}</td></tr>
+        <tr><td>Qty changes</td><td class="num">${qd>=0?'+':''}${qd.toLocaleString()}</td></tr>
+        <tr style="font-weight:700"><td>Revised total</td><td class="num">${totalQty.toLocaleString()}</td></tr>
+      </tbody></table>`;
+    }
+  }
+
+  if(opts.items){
+    const rows=items.map(i=>{
+      const rel=isReleasable(i)?itemRelQty(i.id):0;
+      const qd=(i.co==='deduct'?-i.totalQty:i.totalQty);
+      const p=(isReleasable(i)&&i.totalQty>0)?Math.round(rel/i.totalQty*100):0;
+      const coTag=i.co?` <span class="tag">${esc((i.coLabel?i.coLabel+' ':'')+coTypeLabel(i.co))}</span>`:'';
+      return `<tr><td>${esc(i.desc)}${coTag}</td><td>${esc((i.cat||'').split(' ')[0])}</td><td class="num">${qd.toLocaleString()}</td><td class="num">${isReleasable(i)?rel.toLocaleString():'—'}</td><td class="num">${isReleasable(i)?(i.totalQty-rel).toLocaleString():'—'}</td><td class="num">${isReleasable(i)?p+'%':'—'}</td><td>${isReleasable(i)?itemStatus(i):'Deduct'}</td></tr>`;
+    }).join('');
+    body+=`<h2>All items (${items.length})</h2><table>
+      <thead><tr><th>Description</th><th>Category</th><th class="num">BOM</th><th class="num">Released</th><th class="num">Remaining</th><th class="num">%</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+  }
+
+  if(opts.log){
+    let rel=[...releases];
+    if(opts.from) rel=rel.filter(r=>r.release_date&&r.release_date>=opts.from);
+    if(opts.to) rel=rel.filter(r=>r.release_date&&r.release_date<=opts.to);
+    rel.sort((a,b)=>String(b.release_date||'').localeCompare(String(a.release_date||'')));
+    const cols=4+(internal?3:0)+1; // item,cat,qty,date (+needby,supplier (+loggedby)) status
+    const rows=rel.length?rel.map(r=>`<tr${r.bulk_id?' class="bulk"':''}>
+        <td>${esc(r.item_id)}${r.bulk_id?' <span class="tag">bulk</span>':''}</td>
+        <td>${esc((r.category||'').split(' ')[0])}</td>
+        <td class="num">${(parseInt(r.qty)||0).toLocaleString()}</td>
+        <td>${esc(r.release_date||'—')}</td>
+        ${internal?`<td>${esc(r.need_by||'—')}</td><td>${esc(r.supplier||'—')}</td>`:''}
+        <td>${esc(r.status||'Released')}</td>
+        ${internal?`<td>${esc(r.logged_by_username||'—')}</td>`:''}
+      </tr>`).join(''):`<tr><td colspan="${cols}" style="text-align:center;color:#999;padding:14px">No releases${(opts.from||opts.to)?' in this date range':' logged yet'}.</td></tr>`;
+    const range=(opts.from||opts.to)?` (${opts.from||'start'} → ${opts.to||'today'})`:'';
+    body+=`<h2>Release history${range} · ${rel.length}</h2><table>
+      <thead><tr><th>Item</th><th>Category</th><th class="num">Qty</th><th>Release date</th>${internal?'<th>Need by</th><th>Supplier</th>':''}<th>Status</th>${internal?'<th>Logged by</th>':''}</tr></thead>
+      <tbody>${rows}</tbody></table>`;
+  }
 
   const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(jobName)} — ULETrack Report</title>
   <style>
     *{box-sizing:border-box}
-    body{font-family:Arial,Helvetica,sans-serif;color:#1a1917;margin:0;padding:32px;font-size:12px}
-    .head{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1a5fa8;padding-bottom:14px;margin-bottom:18px}
-    .head img{height:42px}
-    .head .meta{text-align:right;font-size:11px;color:#555}
-    h1{font-size:20px;margin:0 0 2px}
-    .cust{font-size:13px;color:#555;margin-bottom:14px}
-    .kpis{display:flex;gap:10px;margin-bottom:22px}
-    .kpi{flex:1;border:1px solid #ddd;border-radius:8px;padding:10px 12px}
-    .kpi .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#777}
-    .kpi .val{font-size:22px;font-weight:700;margin-top:3px}
-    .kpi .val.blue{color:#1a5fa8}
-    h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#1a5fa8;border-bottom:1px solid #eee;padding-bottom:5px;margin:22px 0 8px}
+    body{font-family:Arial,Helvetica,sans-serif;color:#1a1917;margin:0;padding:34px 32px;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .brandbar{height:5px;background:linear-gradient(90deg,#1a5fa8,#2f78c4);border-radius:3px;margin-bottom:14px}
+    .head{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid #e5e3dc;margin-bottom:16px}
+    .head img{height:46px;width:auto}
+    .head .meta{text-align:right;font-size:10.5px;color:#6b6860;line-height:1.5}
+    .head .meta b{color:#1a5fa8}
+    h1{font-size:21px;margin:2px 0 3px;letter-spacing:-.01em}
+    .cust{font-size:12.5px;color:#555;display:flex;align-items:center;gap:6px;margin-bottom:4px}
+    .cust .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+    .note{font-size:12px;color:#444;background:#f7f6f2;border-left:3px solid #1a5fa8;padding:7px 11px;border-radius:0 6px 6px 0;margin:10px 0 18px}
+    .kpis{display:flex;gap:10px;margin:16px 0 4px}
+    .kpi{flex:1;border:1px solid #e5e3dc;border-radius:9px;padding:11px 13px;background:#fcfbf8}
+    .kpi.accent{background:linear-gradient(155deg,#eaf2fb,#fcfbf8 70%);border-color:#bcd5ee}
+    .kpi .lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#7a766e}
+    .kpi .val{font-size:23px;font-weight:700;margin-top:3px;color:#1a1917}
+    .kpi.accent .val{color:#1a5fa8}
+    .kpi .of{font-size:12px;color:#9e9b96;font-weight:400}
+    .kpi .sub{font-size:10px;color:#7a766e;margin-top:1px}
+    .pbar{display:inline-block;width:60px;height:5px;background:#e8e6de;border-radius:9px;overflow:hidden;vertical-align:middle;margin-right:6px}
+    .pbar.big{display:block;width:100%;height:6px;margin-top:8px}
+    .pfill{height:100%;background:#1a5fa8;border-radius:9px}
+    .pills{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 6px}
+    .pill{font-size:11px;border:1px solid #ddd;border-radius:99px;padding:4px 11px}
+    .pill-n{font-weight:700}
+    h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#1a5fa8;border-bottom:1px solid #e5e3dc;padding-bottom:5px;margin:24px 0 9px}
     table{width:100%;border-collapse:collapse;font-size:11px}
-    th{text-align:left;background:#f3f2ee;border-bottom:1px solid #ddd;padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:#555}
-    td{padding:5px 8px;border-bottom:1px solid #eee}
-    td.num{text-align:right}
+    th{text-align:left;background:#f3f2ee;border-bottom:1px solid #ddd;padding:6px 8px;font-size:9.5px;text-transform:uppercase;letter-spacing:.03em;color:#6b6860}
+    th.num,td.num{text-align:right}
+    td{padding:5px 8px;border-bottom:1px solid #efede7}
+    tr{page-break-inside:avoid}
     tr.bulk td{background:#eef4fb}
-    .tag{background:#1a5fa8;color:#fff;border-radius:3px;font-size:8px;padding:1px 4px;text-transform:uppercase;vertical-align:middle}
-    .pbar{display:inline-block;width:60px;height:5px;background:#eee;border-radius:9px;overflow:hidden;vertical-align:middle;margin-right:5px}
-    .pfill{height:100%;background:#1a5fa8}
-    .foot{margin-top:24px;font-size:9px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:8px}
-    @media print{body{padding:0}@page{margin:14mm}}
+    tfoot td{border-top:2px solid #ddd;font-weight:700;background:#faf9f5}
+    .tag{background:#1a5fa8;color:#fff;border-radius:3px;font-size:8px;padding:1px 5px;text-transform:uppercase;vertical-align:middle;white-space:nowrap}
+    .foot{margin-top:26px;font-size:9px;color:#9e9b96;text-align:center;border-top:1px solid #efede7;padding-top:9px}
+    @media print{body{padding:0}@page{margin:14mm}h2{break-after:avoid}}
   </style></head>
   <body onload="window.print()">
+    <div class="brandbar"></div>
     <div class="head">
-      ${logo?`<img src="${logo}" alt="ULE Group">`:'<div style="font-weight:700;font-size:18px">ULE GROUP</div>'}
-      <div class="meta"><strong>ULETrack</strong> — Material Release Report<br>by ULE Group · Generated ${esc(now)}</div>
+      ${logo?`<img src="${logo}" alt="ULE Group">`:'<div style="font-weight:700;font-size:18px;color:#1a5fa8">ULE GROUP</div>'}
+      <div class="meta"><b>ULETrack</b> — Material Release Report<br>by ULE Group${by?' · Prepared by '+esc(by):''}<br>${esc(now)}</div>
     </div>
     <h1>${esc(jobName)}</h1>
-    <div class="cust">${customer?'Customer: '+esc(customer):'&nbsp;'}</div>
-    <div class="kpis">
-      <div class="kpi"><div class="lbl">Overall released</div><div class="val blue">${pct}%</div><div style="font-size:10px;color:#777">${relQtyTotal.toLocaleString()} / ${totalQty.toLocaleString()} units</div></div>
-      <div class="kpi"><div class="lbl">Items started</div><div class="val">${started}<span style="font-size:12px;color:#999"> / ${items.length}</span></div></div>
-      <div class="kpi"><div class="lbl">Fully released</div><div class="val">${fullRel}</div></div>
-      <div class="kpi"><div class="lbl">Still pending</div><div class="val">${pending}</div></div>
-    </div>
-    <h2>Category breakdown</h2>
-    <table>
-      <thead><tr><th>Category</th><th class="num">Items</th><th class="num">BOM qty</th><th class="num">Released</th><th class="num">Remaining</th><th class="num">Progress</th></tr></thead>
-      <tbody>${catRows}</tbody>
-    </table>
-    <h2>Release log (${relSorted.length})</h2>
-    <table>
-      <thead><tr><th>Item</th><th>Category</th><th class="num">Qty</th><th>Release date</th>${cust?'':'<th>Need by</th><th>Supplier</th>'}<th>Status</th>${cust?'':'<th>Logged by</th>'}</tr></thead>
-      <tbody>${logRows}</tbody>
-    </table>
-    <div class="foot">ULETrack · by ULE Group · Powered by Partnerships</div>
+    ${customer?`<div class="cust"><span class="dot" style="background:${custColor}"></span>Customer: <strong>${esc(customer)}</strong></div>`:''}
+    ${opts.note?`<div class="note">${esc(opts.note)}</div>`:'<div style="margin-bottom:6px"></div>'}
+    ${body}
+    <div class="foot">ULETrack · by ULE Group · Powered by Partnerships · uletrack.com</div>
   </body></html>`;
 
   const win=window.open('','_blank');
