@@ -2883,9 +2883,8 @@ async function openAdminPanel() {
     const byUser={};
     for(const a of assignments){ (byUser[a.user_id]=byUser[a.user_id]||[]).push(a); }
     const jobName=id=>{const j=jobs.find(x=>x.id===id);return j?j.name:id;};
-    document.getElementById('modal-body').innerHTML = `
-      <div class="sec-label">Team members (${users.length})</div>
-      ${users.map(u=>`
+    // One user card (role dropdown, email/pw/remove, job assignments)
+    const userRow=(u)=>`
         <div style="border:1px solid var(--border);border-radius:8px;margin-bottom:.5rem;overflow:hidden">
         <div class="admin-user-row" style="border:none;margin:0">
           <div class="user-avatar" style="width:28px;height:28px;font-size:12px">${u.username.slice(0,2).toUpperCase()}</div>
@@ -2913,7 +2912,27 @@ async function openAdminPanel() {
             </select>
           </div>
         </div>`}
-        </div>`).join('')}
+        </div>`;
+    // Group users by role so staff and customers are clearly separated
+    const byRole={}; users.forEach(u=>{ (byRole[u.role]=byRole[u.role]||[]).push(u); });
+    Object.values(byRole).forEach(arr=>arr.sort((a,b)=>a.username.toLowerCase().localeCompare(b.username.toLowerCase())));
+    const groupTitle={admin:'Admins',pm:'Project Managers',coordinator:'Job Coordinators',member:'Members (legacy)',customer:'Customers'};
+    const sectionHead=(label,n,mt)=>`<div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin:${mt||'.1rem'} 0 .7rem;padding-bottom:.35rem;border-bottom:2px solid var(--border2)">${label} <span style="font-size:11px;font-weight:600;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 8px">${n}</span></div>`;
+    const groupHead=(role,n)=>`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin:.55rem 0 .35rem">${groupTitle[role]||role} · ${n}</div>`;
+    const renderRoleGroup=(role)=>{ const arr=byRole[role]; if(!arr||!arr.length) return ''; return groupHead(role,arr.length)+arr.map(userRow).join(''); };
+    const staffRoles=['admin','pm','coordinator','member'];
+    const otherRoles=Object.keys(byRole).filter(r=>!['admin','pm','coordinator','member','customer'].includes(r));
+    const staffCount=staffRoles.concat(otherRoles).reduce((s,r)=>s+((byRole[r]||[]).length),0);
+    const custCount=(byRole.customer||[]).length;
+    const staffHtml=staffRoles.map(renderRoleGroup).join('')+otherRoles.map(renderRoleGroup).join('');
+    const usersHtml=
+      sectionHead('🛠 ULE Team',staffCount)+
+      (staffHtml||'<p style="font-size:12px;color:var(--text3);margin:0 0 .5rem">No staff accounts yet.</p>')+
+      sectionHead('👤 Customers',custCount,'1.3rem')+
+      (renderRoleGroup('customer')||'<p style="font-size:12px;color:var(--text3);margin:0 0 .5rem">No customer accounts yet.</p>');
+    document.getElementById('modal-body').innerHTML = `
+      <div class="sec-label">Team &amp; clients (${users.length})</div>
+      ${usersHtml}
 
       <div class="sec-label" style="margin-top:1rem">Invite links</div>
       <p style="font-size:12px;color:var(--text3);margin-bottom:.6rem">Each link can be used once. Send to a team member to let them create an account.</p>
