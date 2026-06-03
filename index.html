@@ -2520,7 +2520,18 @@ function exportExcel(){
   const items=currentItems();
   const wb=XLSX.utils.book_new();
   const cats=currentCats();
-  const rows1=[[jobName+' — ULETrack (ULE Group)'],['Exported:',new Date().toLocaleDateString()],[],
+  const cust=isCustomer();
+  const customer=job&&job.customer?job.customer:'';
+  const grandTotal=bomTotal(items);
+  const grandRel=items.filter(isReleasable).reduce((s,i)=>s+itemRelQty(i.id),0);
+  const overallPct=grandTotal>0?Math.round(grandRel/grandTotal*100):0;
+  // Branded header
+  const rows1=[
+    ['ULETrack — by ULE Group'],
+    [jobName + (customer?'   ·   '+customer:'')],
+    ['Overall complete:', overallPct+'%', grandRel.toLocaleString()+' of '+grandTotal.toLocaleString()+' units'],
+    ['Exported:', new Date().toLocaleString()],
+    [],
     ['Category','Total Items','Revised BOM Qty','Released Qty','Remaining','% Released','Items Started','Fully Released','Pending']];
   for(const cat of cats){
     const ci=items.filter(i=>i.cat===cat);
@@ -2532,20 +2543,36 @@ function exportExcel(){
       cir.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length,
       cir.filter(i=>itemStatus(i)==='Pending').length]);
   }
-  // Scope summary (original vs change orders)
-  rows1.push([],['Original BOM',originalBomTotal(items)],
+  // Scope summary (original vs change orders) — internal only
+  if(!cust) rows1.push([],['Original BOM',originalBomTotal(items)],
     ['Adders',items.filter(i=>i.co==='adder').reduce((s,i)=>s+i.totalQty,0)],
     ['Deducts',-items.filter(i=>i.co==='deduct').reduce((s,i)=>s+i.totalQty,0)],
     ['Qty changes',items.filter(i=>i.co==='qty_change').reduce((s,i)=>s+(i.totalQty-(i.origQty||0)),0)],
     ['Revised total',bomTotal(items)]);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows1),'Summary');
-  const rows2=[['Description','Category','BOM Qty','Change Order','CO Type','Original Qty','Total Released','Remaining','% Released','Status']];
-  for(const item of items){const rel=isReleasable(item)?itemRelQty(item.id):0;rows2.push([item.desc,item.cat,(item.co==='deduct'?-item.totalQty:item.totalQty),item.coLabel||'',coTypeLabel(item.co)||'',(item.origQty!=null?item.origQty:''),rel,item.totalQty-rel,(isReleasable(item)&&item.totalQty>0)?Math.round(rel/item.totalQty*100)+'%':'',isReleasable(item)?itemStatus(item):'—']);}
+
+  const rows2=[ cust
+    ? ['Description','Category','BOM Qty','Released','Remaining','% Released','Status']
+    : ['Description','Category','BOM Qty','Change Order','CO Type','Original Qty','Total Released','Remaining','% Released','Status'] ];
+  for(const item of items){
+    const rel=isReleasable(item)?itemRelQty(item.id):0;
+    const qtyv=(item.co==='deduct'?-item.totalQty:item.totalQty);
+    const pctv=(isReleasable(item)&&item.totalQty>0)?Math.round(rel/item.totalQty*100)+'%':'';
+    const stat=isReleasable(item)?itemStatus(item):'—';
+    rows2.push(cust
+      ? [item.desc,item.cat,qtyv,rel,item.totalQty-rel,pctv,stat]
+      : [item.desc,item.cat,qtyv,item.coLabel||'',coTypeLabel(item.co)||'',(item.origQty!=null?item.origQty:''),rel,item.totalQty-rel,pctv,stat]);
+  }
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows2),'All Line Items');
-  const rows3=[['Item','Category','Qty Released','Release Date','Need-By','Supplier','Status','Notes','Logged By']];
-  for(const r of releases)rows3.push([r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.need_by||'',r.supplier||'',r.status||'',r.notes||'',r.logged_by_username||'']);
+
+  const rows3=[ cust
+    ? ['Item','Category','Qty Released','Release Date','Status']
+    : ['Item','Category','Qty Released','Release Date','Need-By','Supplier','Status','Notes','Logged By'] ];
+  for(const r of releases) rows3.push(cust
+    ? [r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.status||'']
+    : [r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.need_by||'',r.supplier||'',r.status||'',r.notes||'',r.logged_by_username||'']);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows3),'Release Log');
-  XLSX.writeFile(wb,jobName.replace(/[^a-z0-9]/gi,'_')+'_Releases_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  XLSX.writeFile(wb,'ULETrack_'+jobName.replace(/[^a-z0-9]/gi,'_')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
 // ─── PDF report (print-ready) ─────────────────────────────────────────────────
@@ -2582,19 +2609,21 @@ function exportPdf(){
     </tr>`;
   }).join('');
 
+  const cust=isCustomer();
+  const logCols=cust?5:8;
   const relSorted=[...releases].sort((a,b)=>String(b.release_date||'').localeCompare(String(a.release_date||'')));
   const logRows=relSorted.length?relSorted.map(r=>`<tr${r.bulk_id?' class="bulk"':''}>
       <td>${esc(r.item_id)}${r.bulk_id?' <span class="tag">bulk</span>':''}</td>
       <td>${esc((r.category||'').split(' ')[0])}</td>
       <td class="num">${(parseInt(r.qty)||0).toLocaleString()}</td>
       <td>${esc(r.release_date||'—')}</td>
-      <td>${esc(r.need_by||'—')}</td>
-      <td>${esc(r.supplier||'—')}</td>
+      ${cust?'':`<td>${esc(r.need_by||'—')}</td>
+      <td>${esc(r.supplier||'—')}</td>`}
       <td>${esc(r.status||'Released')}</td>
-      <td>${esc(r.logged_by_username||'—')}</td>
-    </tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:#888;padding:14px">No releases logged yet.</td></tr>';
+      ${cust?'':`<td>${esc(r.logged_by_username||'—')}</td>`}
+    </tr>`).join(''):`<tr><td colspan="${logCols}" style="text-align:center;color:#888;padding:14px">No releases logged yet.</td></tr>`;
 
-  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(jobName)} — Material Release Report</title>
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(jobName)} — ULETrack Report</title>
   <style>
     *{box-sizing:border-box}
     body{font-family:Arial,Helvetica,sans-serif;color:#1a1917;margin:0;padding:32px;font-size:12px}
@@ -2623,7 +2652,7 @@ function exportPdf(){
   <body onload="window.print()">
     <div class="head">
       ${logo?`<img src="${logo}" alt="ULE Group">`:'<div style="font-weight:700;font-size:18px">ULE GROUP</div>'}
-      <div class="meta">Material Release Report<br>Generated ${esc(now)}</div>
+      <div class="meta"><strong>ULETrack</strong> — Material Release Report<br>by ULE Group · Generated ${esc(now)}</div>
     </div>
     <h1>${esc(jobName)}</h1>
     <div class="cust">${customer?'Customer: '+esc(customer):'&nbsp;'}</div>
@@ -2640,10 +2669,10 @@ function exportPdf(){
     </table>
     <h2>Release log (${relSorted.length})</h2>
     <table>
-      <thead><tr><th>Item</th><th>Category</th><th class="num">Qty</th><th>Release date</th><th>Need by</th><th>Supplier</th><th>Status</th><th>Logged by</th></tr></thead>
+      <thead><tr><th>Item</th><th>Category</th><th class="num">Qty</th><th>Release date</th>${cust?'':'<th>Need by</th><th>Supplier</th>'}<th>Status</th>${cust?'':'<th>Logged by</th>'}</tr></thead>
       <tbody>${logRows}</tbody>
     </table>
-    <div class="foot">ULE Group · Powered by Partnerships · Material Release Tracker</div>
+    <div class="foot">ULETrack · by ULE Group · Powered by Partnerships</div>
   </body></html>`;
 
   const win=window.open('','_blank');
