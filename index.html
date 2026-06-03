@@ -406,6 +406,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,.btn:focus-visib
       <button class="login-submit" id="login-submit" onclick="submitLogin()">Sign in</button>
     </div>
     <div class="login-footer"><a href="#" onclick="showForgotPassword();return false;" style="color:var(--blue);text-decoration:none;font-weight:500">Forgot password?</a></div>
+    <div class="login-footer">New to ULETrack? <a href="#" onclick="showSignup();return false;" style="color:var(--blue);text-decoration:none;font-weight:600">Create an account</a></div>
     <div class="login-footer">ULE Group · Release Management Platform</div>
   </div>
 </div>
@@ -455,6 +456,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,.btn:focus-visib
       <div class="form-row"><label>Confirm password</label><input type="password" id="reg-password2" placeholder="Confirm password" onkeydown="if(event.key==='Enter')submitRegister()"></div>
       <button class="login-submit" id="register-submit" onclick="submitRegister()">Create account</button>
     </div>
+    <div class="login-footer"><a href="#" onclick="backToLogin();return false;" style="color:var(--blue);text-decoration:none;font-weight:500">← Back to sign in</a></div>
   </div>
 </div>
 
@@ -2784,6 +2786,18 @@ function showLoginScreen() {
 
 function backToLogin(){ showLoginScreen(); }
 
+// Self-serve sign-up (no invite link) — creates a view-only Customer account
+function showSignup(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('register-screen').classList.remove('hidden');
+  document.getElementById('forgot-screen').classList.add('hidden');
+  document.getElementById('reset-screen').classList.add('hidden');
+  document.getElementById('layout-wrap').style.cssText='display:none;flex:1;';
+  const sub=document.getElementById('register-sub'); if(sub) sub.textContent="Create your account — you'll have view-only access until an admin grants more.";
+  const err=document.getElementById('register-error'); if(err) err.style.display='none';
+  ['reg-username','reg-company','reg-email','reg-password','reg-password2'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+}
+
 function showForgotPassword(){
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('forgot-screen').classList.remove('hidden');
@@ -2919,10 +2933,14 @@ async function submitRegister() {
     if(existing.some(x=>(x.username||'').toLowerCase()===username.toLowerCase())) { errEl.textContent='Username already taken.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Create account'; return; }
     const hash = hashPassword(password.toLowerCase());
     const token = new URLSearchParams(window.location.search).get('invite');
-    // Validate invite token
-    const invites = await sbGet('invites', `token=eq.${encodeURIComponent(token)}&select=id,used_at`);
-    if(!invites.length || invites[0].used_at) { errEl.textContent='Invalid or already used invite link.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Create account'; return; }
-    // Create user (company column may not exist yet — degrade gracefully)
+    // If an invite link was used, validate it. Self-serve sign-up (no token) skips this.
+    let invite=null;
+    if(token){
+      const invites = await sbGet('invites', `token=eq.${encodeURIComponent(token)}&select=id,used_at`);
+      if(!invites.length || invites[0].used_at) { errEl.textContent='Invalid or already used invite link.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Create account'; return; }
+      invite=invites[0];
+    }
+    // Create user — always a view-only Customer; an admin grants further access
     let newUser;
     try{
       newUser = await sbPost('users', {username, email: email||null, company: company||null, password_hash: hash, role: 'customer'});
@@ -2930,8 +2948,8 @@ async function submitRegister() {
       newUser = await sbPost('users', {username, email: email||null, password_hash: hash, role: 'customer'});
     }
     const user = Array.isArray(newUser) ? newUser[0] : newUser;
-    // Mark invite used
-    await sbPatch('invites', invites[0].id, {used_at: new Date().toISOString(), used_by: user.id});
+    // Mark invite used (only if one was provided)
+    if(invite) await sbPatch('invites', invite.id, {used_at: new Date().toISOString(), used_by: user.id});
     currentUser = {id: user.id, username: user.username, role: user.role};
     try { localStorage.setItem('ule-session', JSON.stringify(currentUser)); } catch(e){}
     // Clean URL
