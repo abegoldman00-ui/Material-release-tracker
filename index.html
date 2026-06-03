@@ -446,6 +446,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,.btn:focus-visib
     <div class="login-error" id="register-error"></div>
     <div class="login-form">
       <div class="form-row"><label>Choose a username</label><input type="text" id="reg-username" placeholder="e.g. jsmith" autocomplete="username"></div>
+      <div class="form-row"><label>Company / organization</label><input type="text" id="reg-company" placeholder="e.g. FSG Electric" autocomplete="organization"></div>
       <div class="form-row"><label>Email (for password resets)</label><input type="email" id="reg-email" placeholder="you@company.com" autocomplete="email"></div>
       <div class="form-row"><label>Password</label><input type="password" id="reg-password" placeholder="Choose a password" autocomplete="new-password"></div>
       <div class="form-row"><label>Confirm password</label><input type="password" id="reg-password2" placeholder="Confirm password" onkeydown="if(event.key==='Enter')submitRegister()"></div>
@@ -2822,6 +2823,7 @@ async function submitLogin() {
 async function submitRegister() {
   const username = document.getElementById('reg-username').value.trim();
   const email = document.getElementById('reg-email').value.trim();
+  const company = document.getElementById('reg-company').value.trim();
   const password = document.getElementById('reg-password').value;
   const password2 = document.getElementById('reg-password2').value;
   const errEl = document.getElementById('register-error');
@@ -2841,8 +2843,13 @@ async function submitRegister() {
     // Validate invite token
     const invites = await sbGet('invites', `token=eq.${encodeURIComponent(token)}&select=id,used_at`);
     if(!invites.length || invites[0].used_at) { errEl.textContent='Invalid or already used invite link.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Create account'; return; }
-    // Create user
-    const newUser = await sbPost('users', {username, email: email||null, password_hash: hash, role: 'customer'});
+    // Create user (company column may not exist yet — degrade gracefully)
+    let newUser;
+    try{
+      newUser = await sbPost('users', {username, email: email||null, company: company||null, password_hash: hash, role: 'customer'});
+    }catch(err){
+      newUser = await sbPost('users', {username, email: email||null, password_hash: hash, role: 'customer'});
+    }
     const user = Array.isArray(newUser) ? newUser[0] : newUser;
     // Mark invite used
     await sbPatch('invites', invites[0].id, {used_at: new Date().toISOString(), used_by: user.id});
@@ -2874,8 +2881,9 @@ async function openAdminPanel() {
   document.getElementById('overlay').classList.add('open');
   try {
     let users;
-    try{ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at,email'); }
-    catch(e){ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at'); } // email column may not exist pre-migration
+    try{ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at,email,company'); }
+    catch(e){ try{ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at,email'); }
+      catch(e2){ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at'); } } // email/company columns may not exist pre-migration
     const invites = await sbGet('invites', 'order=created_at.desc&limit=10&select=id,token,used_at,created_at');
     let assignments = [];
     try{ assignments = await sbGet('job_assignments', 'select=id,job_id,user_id'); }
@@ -2889,7 +2897,7 @@ async function openAdminPanel() {
         <div class="admin-user-row" style="border:none;margin:0">
           <div class="user-avatar" style="width:28px;height:28px;font-size:12px">${u.username.slice(0,2).toUpperCase()}</div>
           <div class="admin-user-info">
-            <div class="admin-user-name">${esc(u.username)} ${u.id===currentUser.id?'<span style="font-size:10px;color:var(--text3)">(you)</span>':''}</div>
+            <div class="admin-user-name">${esc(u.username)} ${u.company?`<span style="font-size:10px;font-weight:600;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 8px;margin-left:4px;color:var(--text2)">🏢 ${esc(u.company)}</span>`:''} ${u.id===currentUser.id?'<span style="font-size:10px;color:var(--text3)">(you)</span>':''}</div>
             <div class="admin-user-meta">Joined ${new Date(u.created_at).toLocaleDateString()} ${u.email?'· '+esc(u.email):'· <span style="color:var(--amber)">no email</span>'}</div>
           </div>
           ${u.id===currentUser.id
@@ -2898,6 +2906,7 @@ async function openAdminPanel() {
                  ${ROLES.map(rv=>`<option value="${rv}"${u.role===rv?' selected':''}>${ROLE_LABELS[rv]}</option>`).join('')}
                  ${ROLES.includes(u.role)?'':`<option value="${esc(u.role)}" selected>${esc(u.role)} (legacy)</option>`}
                </select>`}
+          <button class="btn" style="height:24px;font-size:11px" onclick="setUserCompany('${u.id}','${esc(u.username)}','${esc(u.company||'')}')" title="Set company / organization">🏢 Company</button>
           <button class="btn" style="height:24px;font-size:11px" onclick="setUserEmail('${u.id}','${esc(u.username)}','${esc(u.email||'')}')" title="Set email for password resets">✉ Email</button>
           <button class="btn" style="height:24px;font-size:11px" onclick="resetUserPassword('${u.id}','${esc(u.username)}')" title="Set a new password for this user">Reset PW</button>
           ${u.id!==currentUser.id?`<button class="btn" style="height:24px;font-size:11px;color:var(--red)" onclick="deleteUser('${u.id}','${esc(u.username)}')">Remove</button>`:''}
@@ -2915,7 +2924,7 @@ async function openAdminPanel() {
         </div>`;
     // Group users by role so staff and customers are clearly separated
     const byRole={}; users.forEach(u=>{ (byRole[u.role]=byRole[u.role]||[]).push(u); });
-    Object.values(byRole).forEach(arr=>arr.sort((a,b)=>a.username.toLowerCase().localeCompare(b.username.toLowerCase())));
+    Object.values(byRole).forEach(arr=>arr.sort((a,b)=>(a.company||'￿').toLowerCase().localeCompare((b.company||'￿').toLowerCase()) || a.username.toLowerCase().localeCompare(b.username.toLowerCase())));
     const groupTitle={admin:'Admins',pm:'Project Managers',coordinator:'Job Coordinators',member:'Members (legacy)',customer:'Customers'};
     const sectionHead=(label,n,mt)=>`<div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin:${mt||'.1rem'} 0 .7rem;padding-bottom:.35rem;border-bottom:2px solid var(--border2)">${label} <span style="font-size:11px;font-weight:600;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 8px">${n}</span></div>`;
     const groupHead=(role,n)=>`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin:.55rem 0 .35rem">${groupTitle[role]||role} · ${n}</div>`;
@@ -3016,6 +3025,20 @@ async function adminUnassign(assignmentId){
     await sbDelete('job_assignments',assignmentId);
     openAdminPanel();
   }catch(e){ alert('Failed to unassign job: '+e); }
+}
+
+async function setUserCompany(userId, username, current) {
+  if(!can('manageUsers')) return;
+  const company = prompt(`Company / organization for "${username}":`, current||'');
+  if(company === null) return; // cancelled
+  try {
+    await sbPatch('users', userId, {company: company.trim()||null});
+    toast(`✓ Company ${company.trim()?'saved':'cleared'} for ${username}`);
+    openAdminPanel();
+  } catch(e) {
+    if(String(e).indexOf('company')>-1 || String(e).indexOf('42703')>-1) alert('The users.company column does not exist yet — run migration_company.sql first.');
+    else alert('Failed to save company: ' + e);
+  }
 }
 
 async function setUserEmail(userId, username, current) {
