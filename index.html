@@ -857,13 +857,7 @@ async function selectJob(jobId){
     setSyncStatus('err','Load error');
     releases=[];
   }
-  const job=jobs.find(j=>j.id===jobId);
-  document.getElementById('header-job-name').textContent=job?job.name:'Job';
-  const hc=document.getElementById('header-customer');
-  if(job&&job.customer&&job.customer.trim()){
-    const col=customerColor(job.customer.trim());
-    hc.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:5px;vertical-align:middle"></span>${esc(job.customer)}`;
-  }else{ hc.textContent=''; }
+  setJobHeader(jobs.find(j=>j.id===jobId));
   document.getElementById('no-job-state').style.display='none';
   document.getElementById('job-tabs').style.display='block';
   document.getElementById('main-nav').style.display='flex';
@@ -891,18 +885,63 @@ async function syncJobsList(){
   renderSidebar();
 }
 
+// Set the header job name + colored customer dot (used on select, save, and poll)
+function setJobHeader(job){
+  document.getElementById('header-job-name').textContent = job ? job.name : 'Select a job';
+  const hc=document.getElementById('header-customer'); if(!hc) return;
+  if(job && job.customer && job.customer.trim()){
+    const col=customerColor(job.customer.trim());
+    hc.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:5px;vertical-align:middle"></span>${esc(job.customer)}`;
+  }else hc.textContent='';
+}
+
+// Re-check the signed-in user's role/account so access changes apply live
+async function syncCurrentUser(){
+  if(!currentUser || !currentUser.id) return;
+  let rows;
+  try{ rows=await sbGet('users',`id=eq.${currentUser.id}&select=id,role`); }catch(e){ return; }
+  if(!rows.length){
+    // account removed by an admin → sign out
+    currentUser=null; try{localStorage.removeItem('ule-session');}catch(e){}
+    releases=[]; jobs=[]; jobItems={}; currentJobId=null;
+    document.getElementById('user-badge').style.display='none';
+    showLoginScreen();
+    const le=document.getElementById('login-error'); if(le){ le.textContent='Your account is no longer active. Please contact an admin.'; le.style.display='block'; }
+    return;
+  }
+  if(rows[0].role && rows[0].role!==currentUser.role){
+    currentUser.role=rows[0].role;
+    try{ localStorage.setItem('ule-session', JSON.stringify(currentUser)); }catch(e){}
+    showApp();                 // re-apply role-based UI gating
+    toast('Your access level was updated');
+  }
+}
+
 setInterval(async()=>{
   if(!currentUser)return;
   try{
+    await syncCurrentUser();
+    if(!currentUser) return;   // signed out (account removed)
     await syncJobsList();
     if(currentJobId){
-      releases=await sbGet('releases',`job_id=eq.${encodeURIComponent(currentJobId)}&order=created_at.asc&limit=5000`);
-      refreshAll();
-      loadActivity();
+      const job=jobs.find(j=>j.id===currentJobId);
+      if(job){
+        setJobHeader(job);     // reflect live renames / customer changes
+        releases=await sbGet('releases',`job_id=eq.${encodeURIComponent(currentJobId)}&order=created_at.asc&limit=5000`);
+        refreshAll();
+        loadActivity();
+      }else{
+        // current job was deleted or access revoked → drop back to no-job state
+        currentJobId=null; releases=[];
+        document.getElementById('no-job-state').style.display='flex';
+        document.getElementById('job-tabs').style.display='none';
+        document.getElementById('main-nav').style.display='none';
+        setJobHeader(null);
+      }
     }
     setSyncStatus('ok','Live');
   }catch(e){setSyncStatus('err','Sync error');}
-},30000);
+},15000);
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
 function jobItemHtml(job){
@@ -2182,12 +2221,7 @@ async function saveJobInfo(jobId){
       }
     }
     renderSidebar();
-    if(jobId===currentJobId){
-      document.getElementById('header-job-name').textContent=name;
-      const hc=document.getElementById('header-customer');
-      if(customer){ hc.innerHTML=`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${customerColor(customer)};margin-right:5px;vertical-align:middle"></span>${esc(customer)}`; }
-      else hc.textContent='';
-    }
+    if(jobId===currentJobId){ setJobHeader(job); }
     toast('✓ Job info saved');
   }catch(e){ alert('Save failed: '+e); }
   setBtnLoading('mj-save-info-btn',false,'Save job info');
