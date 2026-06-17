@@ -1346,47 +1346,43 @@ function renderLog(){
     return logSortDir==='asc'?cmp:-cmp;
   });
 
-  // Group bulk releases together — show bulk header rows + individual item rows
-  const rendered = [];
-  const seenBulkIds = new Set();
-  let rowNum = 0;
-
+  // ── Group releases by Release name / # ──────────────────────────────────────
+  // A "group" is keyed by release_name (when present), else by bulk_id, else the
+  // release is a standalone single. Named groups and bulk groups get a header
+  // divider so the log is cleanly separated by release.
+  const groups = [];
+  const groupIndex = {};
   for(const r of rows){
-    rowNum++;
-    if(r.bulk_id && !seenBulkIds.has(r.bulk_id)){
-      // First time we see this bulk_id — render a bulk group header
-      seenBulkIds.add(r.bulk_id);
-      const bulkGroup = rows.filter(x=>x.bulk_id===r.bulk_id);
-      const totalQty = bulkGroup.reduce((s,x)=>s+(parseInt(x.qty)||0),0);
-      rendered.push(`<tr style="background:var(--blue-bg)">
-        <td class="mobile-fullcell" colspan="9" style="padding:6px 11px">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span style="font-size:11px;font-weight:600;color:var(--blue)">📦 Bulk release — ${bulkGroup.length} items · ${totalQty.toLocaleString()} units total</span>
-            <span style="font-size:11px;color:var(--text2)">${r.release_date||''} ${(r.supplier&&!isCustomer())?'· '+esc(r.supplier):''} ${r.status?'· '+r.status:''}</span>
-            ${(r.logged_by_username&&!isCustomer())?`<span style="background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">${esc(r.logged_by_username)}</span>`:''}
-            ${can('release')?`<div style="margin-left:auto;display:flex;gap:4px">
-              <button class="btn btn-blue" style="height:24px;padding:0 9px;font-size:11px" onclick="openEditBulk('${esc(r.bulk_id)}')">Edit bulk</button>
-              <button class="btn" style="height:24px;padding:0 7px;font-size:11px;color:var(--red)" onclick="deleteBulk('${esc(r.bulk_id)}')">🗑 Delete all</button>
-            </div>`:''}
-          </div>
-        </td>
-      </tr>`);
-      // Render each item in the bulk as an indented sub-row
-      for(const br of bulkGroup){
-        rendered.push(`<tr style="background:var(--blue-bg);opacity:.85">
-          <td class="mobile-title" style="padding-left:24px;font-size:12px" title="${esc(br.item_id)}">↳ ${esc(br.item_id)}</td>
-          <td data-label="Category"><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((br.category||'').split(' ')[0])}</span></td>
-          <td data-label="Qty" style="font-weight:600">${(parseInt(br.qty)||0).toLocaleString()}</td>
-          <td data-label="Release date" style="font-family:'DM Mono',monospace;font-size:11px">${br.release_date||'—'}</td>
-          <td class="internal-col" data-label="Need by" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${br.need_by||'—'}</td>
-          <td class="internal-col" data-label="Supplier" style="color:var(--text2)">${esc(br.supplier||'—')}</td>
-          <td data-label="Status">${badge(br.status||'Released')}</td>
-          <td class="internal-col" data-label="Notes" style="font-size:11px;color:var(--text3)" title="${esc(br.notes||'')}">${esc((br.notes||'').slice(0,22)+((br.notes||'').length>22?'…':''))}</td>
-          <td class="internal-col"></td>
-        </tr>`);
-      }
-    } else if(!r.bulk_id){
-      // Regular single release
+    const nm = (r.release_name||'').trim();
+    const key = nm ? ('name::'+nm.toLowerCase()) : (r.bulk_id ? ('bulk::'+r.bulk_id) : ('solo::'+r.id));
+    if(groupIndex[key]==null){ groupIndex[key]=groups.length; groups.push({key,name:nm,items:[]}); }
+    groups[groupIndex[key]].items.push(r);
+  }
+
+  const subRow = (br)=>`<tr style="background:var(--blue-bg);opacity:.9">
+    <td class="mobile-title" style="padding-left:24px;font-size:12px" title="${esc(br.item_id)}">↳ ${esc(br.item_id)}</td>
+    <td data-label="Category"><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((br.category||'').split(' ')[0])}</span></td>
+    <td data-label="Qty" style="font-weight:600">${(parseInt(br.qty)||0).toLocaleString()}</td>
+    <td data-label="Release date" style="font-family:'DM Mono',monospace;font-size:11px">${br.release_date||'—'}</td>
+    <td class="internal-col" data-label="Need by" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${br.need_by||'—'}</td>
+    <td class="internal-col" data-label="Supplier" style="color:var(--text2)">${esc(br.supplier||'—')}</td>
+    <td data-label="Status">${badge(br.status||'Released')}</td>
+    <td class="internal-col" data-label="Notes" style="font-size:11px;color:var(--text3)" title="${esc(br.notes||'')}">${esc((br.notes||'').slice(0,22)+((br.notes||'').length>22?'…':''))}</td>
+    <td class="internal-col" data-label="Logged by" style="font-size:11px;color:var(--text3)">${br.logged_by_username?'<span style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">'+esc(br.logged_by_username)+'</span>':'—'}</td>
+    <td class="mobile-actions internal-col">${can('release')?`<div style="display:flex;gap:3px">
+      <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--blue)" onclick="openEditModal('${br.id}')">Edit</button>
+      <button class="btn" style="padding:0 5px;height:24px;font-size:11px;color:var(--red)" onclick="deleteRelease('${br.id}')">✕</button>
+    </div>`:''}</td>
+  </tr>`;
+
+  const rendered = [];
+  let rowNum = 0;
+  for(const g of groups){
+    const items = g.items;
+    // Standalone single release (no name, no bulk) → plain numbered row
+    if(g.key.startsWith('solo::')){
+      const r = items[0];
+      rowNum++;
       rendered.push(`<tr>
         <td class="mobile-title" title="${esc(r.item_id)}"><span style="color:var(--text3);font-size:10px;margin-right:5px">${rowNum}</span>${esc(r.item_id)}</td>
         <td data-label="Category"><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((r.category||'').split(' ')[0])}</span></td>
@@ -1402,13 +1398,33 @@ function renderLog(){
           <button class="btn" style="padding:0 5px;height:24px;font-size:11px;color:var(--red)" onclick="deleteRelease('${r.id}')">✕</button>
         </div>`:''}</td>
       </tr>`);
+      continue;
     }
-    // Skip bulk items already rendered via group header
-    if(r.bulk_id && seenBulkIds.has(r.bulk_id) && rows.filter(x=>x.bulk_id===r.bulk_id)[0]?.id !== r.id) continue;
+    // Named or bulk group → header divider + indented item rows
+    const r0 = items[0];
+    const totalQty = items.reduce((s,x)=>s+(parseInt(x.qty)||0),0);
+    const bulkIds = [...new Set(items.map(x=>x.bulk_id).filter(Boolean))];
+    const hasSingles = items.some(x=>!x.bulk_id);
+    const singleBulk = (bulkIds.length===1 && !hasSingles) ? bulkIds[0] : null; // group maps cleanly to one bulk release
+    const label = g.name ? esc(g.name) : 'Bulk release';
+    rendered.push(`<tr style="background:var(--blue-bg);border-top:2px solid var(--blue-border)">
+      <td class="mobile-fullcell" colspan="10" style="padding:7px 11px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:11.5px;font-weight:700;color:var(--blue)">📦 ${label}</span>
+          <span style="font-size:11px;color:var(--text2)">${items.length} item${items.length!==1?'s':''} · ${totalQty.toLocaleString()} units${r0.release_date?' · '+r0.release_date:''}${(r0.supplier&&!isCustomer())?' · '+esc(r0.supplier):''}${r0.status?' · '+r0.status:''}</span>
+          ${(r0.logged_by_username&&!isCustomer())?`<span style="background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">${esc(r0.logged_by_username)}</span>`:''}
+          ${(can('release')&&singleBulk)?`<div style="margin-left:auto;display:flex;gap:4px">
+            <button class="btn btn-blue" style="height:24px;padding:0 9px;font-size:11px" onclick="openEditBulk('${jsAttr(singleBulk)}')">Edit release</button>
+            <button class="btn" style="height:24px;padding:0 7px;font-size:11px;color:var(--red)" onclick="deleteBulk('${jsAttr(singleBulk)}')">🗑 Delete all</button>
+          </div>`:''}
+        </div>
+      </td>
+    </tr>`);
+    for(const br of items) rendered.push(subRow(br));
   }
 
   const el = document.getElementById('log-tbl');
-  el.innerHTML = rendered.length===0 ? `<tr><td colspan="9" class="empty-state">No releases logged yet.</td></tr>` : rendered.join('');
+  el.innerHTML = rendered.length===0 ? `<tr><td colspan="10" class="empty-state">No releases logged yet.</td></tr>` : rendered.join('');
 
   const total = rows.length;
   const pag=document.getElementById('log-pag');
@@ -1428,6 +1444,7 @@ function openEditBulk(bulkId){
   document.getElementById('modal-title').textContent = '📦 Edit bulk release';
   document.getElementById('modal-body').innerHTML = `
     <p style="font-size:12px;color:var(--text2);margin-bottom:.9rem">Changes to date, supplier, status and notes apply to <strong>all ${group.length} items</strong> in this release. Quantities are edited per item.</p>
+    <div class="form-row"><label>Release name / #</label><input type="text" id="eb-name" value="${esc(first.release_name||'')}" placeholder="e.g. Release #3 · Truck 4"></div>
     <div class="form-grid">
       <div class="form-row"><label>Release date</label><input type="date" id="eb-date" value="${esc(first.release_date||'')}"></div>
       <div class="form-row"><label>Need-by date</label><input type="date" id="eb-needby" value="${esc(first.need_by||'')}"></div>
@@ -1454,38 +1471,102 @@ function openEditBulk(bulkId){
         </tbody>
       </table>
     </div>
+    <div class="sec-label">Add items to this release</div>
+    <div class="search-wrap" style="margin-bottom:.5rem">
+      <input type="text" id="eb-search" placeholder="Search and add items..." oninput="renderEbSearch('${jsAttr(bulkId)}')" autocomplete="off">
+      <svg style="position:absolute;right:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2;pointer-events:none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <div id="eb-search-results" style="margin-bottom:.6rem"></div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-blue" id="save-btn" onclick="saveBulkEdit('${esc(bulkId)}',${group.length})">Save changes</button>
+      <button class="btn btn-blue" id="save-btn" onclick="saveBulkEdit('${jsAttr(bulkId)}',${group.length})">Save changes</button>
     </div>`;
   document.getElementById('overlay').classList.add('open');
 }
 
-async function saveBulkEdit(bulkId, count){
+function renderEbSearch(bulkId){
+  const q = document.getElementById('eb-search').value.trim().toLowerCase();
+  const el = document.getElementById('eb-search-results');
+  if(!q){ el.innerHTML=''; return; }
+  const items = currentItems().filter(isReleasable);
+  const already = new Set(releases.filter(r=>r.bulk_id===bulkId).map(r=>r.item_id));
+  const matches = items.filter(i => !already.has(i.id) && i.desc.toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){ el.innerHTML='<p style="font-size:12px;color:var(--text3);padding:.3rem 0">No items found.</p>'; return; }
+  el.innerHTML = matches.map(item => {
+    const remaining = item.totalQty - itemRelQty(item.id);
+    return `<div class="result-item" style="padding:7px 10px" onclick="addItemToBulk('${jsAttr(bulkId)}','${jsAttr(item.id)}')">
+      <div style="flex:1;min-width:0">
+        <div class="result-desc" style="font-size:12px">${esc(item.desc)}</div>
+        <div class="result-cat">${esc(item.cat)} · ${remaining.toLocaleString()} remaining</div>
+      </div>
+      <button class="btn btn-blue" style="height:24px;padding:0 9px;font-size:11px;flex-shrink:0">+ Add</button>
+    </div>`;
+  }).join('');
+}
+
+async function addItemToBulk(bulkId, itemId){
+  if(!can('release')){ toast('You do not have permission to edit releases.'); return; }
+  const item = currentItems().find(i=>i.id===itemId);
+  if(!item) return;
+  // Persist any in-progress edits to the shared fields + quantities first, so nothing is lost on re-render
+  try{ await saveBulkEdit(bulkId, releases.filter(r=>r.bulk_id===bulkId).length, true); }
+  catch(e){ /* saveBulkEdit handles its own errors */ }
+  // Read the (now-saved) shared fields to apply to the new row
+  const group = releases.filter(r=>r.bulk_id===bulkId);
+  const first = group[0] || {};
+  const remaining = item.totalQty - itemRelQty(item.id);
+  const base = {
+    job_id:currentJobId, item_id:item.id, category:item.cat,
+    qty: remaining>0?remaining:1,
+    release_date:first.release_date||null, need_by:first.need_by||null,
+    supplier:first.supplier||null, status:first.status||'Released',
+    notes:first.notes||null, bulk_id:bulkId,
+    logged_by_username:currentUser?currentUser.username:null
+  };
+  const release_name = first.release_name||null;
+  try{
+    let row;
+    try{ row = await sbPost('releases',{...base,release_name}); }
+    catch(err){ row = await sbPost('releases',base); } // release_name column may not exist yet
+    releases.push(Array.isArray(row)?row[0]:row);
+    refreshAll();
+    logActivity('bulk_edited',`added ${item.desc} to a bulk release`).then(loadActivity);
+    toast('✓ Item added to release');
+    openEditBulk(bulkId);
+  }catch(e){ alert('Failed to add item: '+e); }
+}
+
+async function saveBulkEdit(bulkId, count, silent){
   if(!can('release')){ toast('You do not have permission to edit releases.'); return; }
   const date = document.getElementById('eb-date').value||null;
   const needby = document.getElementById('eb-needby').value||null;
   const supplier = document.getElementById('eb-supplier').value||null;
   const status = document.getElementById('eb-status').value;
   const notes = document.getElementById('eb-notes').value||null;
-  setBtnLoading('save-btn',true,'Saving...');
+  const nameEl = document.getElementById('eb-name');
+  const release_name = nameEl ? ((nameEl.value||'').trim()||null) : undefined;
+  if(!silent) setBtnLoading('save-btn',true,'Saving...');
   try{
     const group = releases.filter(r=>r.bulk_id===bulkId);
     for(let i=0;i<group.length;i++){
       const r = group[i];
       const qtyEl = document.getElementById(`eb-qty-${i}`);
       const qty = qtyEl ? parseInt(qtyEl.value)||r.qty : r.qty;
-      const updated = await sbPatch('releases', r.id, {qty, release_date:date, need_by:needby, supplier, status, notes});
+      const base = {qty, release_date:date, need_by:needby, supplier, status, notes};
+      let updated;
+      try{ updated = await sbPatch('releases', r.id, release_name===undefined?base:{...base,release_name}); }
+      catch(err){ updated = await sbPatch('releases', r.id, base); } // release_name column may not exist yet
       const arr = Array.isArray(updated)?updated:[updated];
       const idx = releases.findIndex(x=>x.id===r.id);
       if(idx>=0 && arr[0]) releases[idx] = arr[0];
     }
+    if(silent) return;
     closeModal();
     refreshAll();
     logActivity('bulk_edited',`edited a bulk release (${count} item${count!==1?'s':''})`).then(loadActivity);
     toast(`✓ Bulk release updated`);
-  }catch(e){ alert('Save failed: '+e); }
-  setBtnLoading('save-btn',false,'Save changes');
+  }catch(e){ if(!silent) alert('Save failed: '+e); else throw e; }
+  finally{ if(!silent) setBtnLoading('save-btn',false,'Save changes'); }
 }
 
 async function deleteSingleFromBulk(releaseId, bulkId){
@@ -1539,6 +1620,7 @@ function buildItemModal(item,editingId=null){
       if(r.id===editingId){
         return`<div class="release-item" style="border-color:var(--blue-border);background:var(--blue-bg)">
           <div style="font-size:10px;font-weight:600;color:var(--blue);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.04em">Editing release</div>
+          <div class="form-row"><label>Release name / #</label><input type="text" id="e-name" value="${esc(r.release_name||'')}" placeholder="e.g. Release #3 · Truck 4"></div>
           <div class="form-grid">
             <div class="form-row"><label>Qty</label><input type="number" id="e-qty" value="${parseInt(r.qty)}" min="1"></div>
             <div class="form-row"><label>Supplier</label><input type="text" id="e-sup" value="${esc(r.supplier||'')}"></div>
@@ -1556,7 +1638,7 @@ function buildItemModal(item,editingId=null){
       }
       return`<div class="release-item">
         <div class="release-item-head">
-          <span style="font-size:13px;font-weight:600;flex:1">${(parseInt(r.qty)||0).toLocaleString()} units</span>
+          <span style="font-size:13px;font-weight:600;flex:1">${(parseInt(r.qty)||0).toLocaleString()} units${r.release_name?` <span style="font-weight:500;color:var(--text2);font-size:12px">· ${esc(r.release_name)}</span>`:''}</span>
           ${badge(r.status||'Released')}
           ${editable?`<div style="display:flex;gap:3px;margin-left:auto">
             <button class="btn" style="padding:0 7px;height:24px;font-size:11px;color:var(--blue)" onclick="buildItemModal(currentItems().find(i=>i.id==='${jsAttr(item.id)}'),'${r.id}')">Edit</button>
@@ -1580,6 +1662,7 @@ function buildItemModal(item,editingId=null){
     <div class="sec-label">Release history</div>${histHtml}
     ${editable?`
     <div class="sec-label">Log new release</div>
+    <div class="form-row"><label>Release name / #</label><input type="text" id="f-name" placeholder="e.g. Release #3 · Truck 4"></div>
     <div class="form-grid">
       <div class="form-row"><label>Qty to release</label><input type="number" id="f-qty" placeholder="e.g. 500" min="1"></div>
       <div class="form-row"><label>Supplier / vendor</label><input type="text" id="f-sup" placeholder="e.g. Anixter"></div>
@@ -1606,6 +1689,7 @@ function openEditModal(releaseId){
   activeModal={type:'edit',releaseId};
   document.getElementById('modal-title').textContent='Edit release — '+r.item_id;
   document.getElementById('modal-body').innerHTML=`
+    <div class="form-row"><label>Release name / #</label><input type="text" id="e-name" value="${esc(r.release_name||'')}" placeholder="e.g. Release #3 · Truck 4"></div>
     <div class="form-grid">
       <div class="form-row"><label>Qty</label><input type="number" id="e-qty" value="${parseInt(r.qty)}" min="1"></div>
       <div class="form-row"><label>Supplier</label><input type="text" id="e-sup" value="${esc(r.supplier||'')}"></div>
@@ -1630,14 +1714,18 @@ async function saveNewRelease(itemId,category){
   if(!qty||qty<=0){alert('Enter a valid quantity.');return;}
   setBtnLoading('save-btn',true,'Saving...');
   try{
-    const row=await sbPost('releases',{job_id:currentJobId,item_id:itemId,category,qty,
+    const release_name=(document.getElementById('f-name').value||'').trim()||null;
+    const base={job_id:currentJobId,item_id:itemId,category,qty,
       supplier:document.getElementById('f-sup').value||null,
       release_date:document.getElementById('f-rdate').value||null,
       need_by:document.getElementById('f-nby').value||null,
       status:document.getElementById('f-st').value,
       notes:document.getElementById('f-notes').value||null,
       logged_by_username:currentUser?currentUser.username:null
-    });
+    };
+    let row;
+    try{ row=await sbPost('releases',{...base,release_name}); }
+    catch(err){ row=await sbPost('releases',base); } // release_name column may not exist yet
     releases.push(Array.isArray(row)?row[0]:row);
     const item=currentItems().find(i=>i.id===itemId);
     if(item)buildItemModal(item);
@@ -1654,13 +1742,18 @@ async function saveEdit(releaseId,itemId){
   if(!qty||qty<=0){alert('Enter a valid quantity.');return;}
   setBtnLoading('save-btn',true,'Saving...');
   try{
-    const updated=await sbPatch('releases',releaseId,{qty,
+    const nameEl=document.getElementById('e-name');
+    const release_name=nameEl?((nameEl.value||'').trim()||null):undefined;
+    const base={qty,
       supplier:document.getElementById('e-sup').value||null,
       release_date:document.getElementById('e-rdate').value||null,
       need_by:document.getElementById('e-nby').value||null,
       status:document.getElementById('e-st').value,
       notes:document.getElementById('e-notes').value||null
-    });
+    };
+    let updated;
+    try{ updated=await sbPatch('releases',releaseId, release_name===undefined?base:{...base,release_name}); }
+    catch(err){ updated=await sbPatch('releases',releaseId,base); } // release_name column may not exist yet
     const idx=releases.findIndex(r=>r.id===releaseId);
     if(idx>=0)releases[idx]=Array.isArray(updated)?updated[0]:updated;
     if(itemId){const item=currentItems().find(i=>i.id===itemId);if(item)buildItemModal(item);}
@@ -2464,6 +2557,7 @@ function openBulkRelease(){
   document.getElementById('modal-title').textContent = '📦 Bulk release — delivery manifest';
   document.getElementById('modal-body').innerHTML = `
     <p style="font-size:12px;color:var(--text2);margin-bottom:.9rem">Set the release details once, then add all items delivered in this shipment.</p>
+    <div class="form-row"><label>Release name / #</label><input type="text" id="br-name" placeholder="e.g. Release #3 · Truck 4"></div>
     <div class="form-grid">
       <div class="form-row"><label>Release date</label><input type="date" id="br-date" value="${new Date().toISOString().slice(0,10)}"></div>
       <div class="form-row"><label>Need-by / delivery date</label><input type="date" id="br-needby"></div>
@@ -2560,6 +2654,7 @@ async function submitBulkRelease(){
   const supplier = document.getElementById('br-supplier').value||null;
   const status = document.getElementById('br-status').value;
   const notes = document.getElementById('br-notes').value||null;
+  const release_name = (document.getElementById('br-name').value||'').trim()||null;
   setBtnLoading('br-submit-btn',true,'Submitting...');
   try{
     // Generate a shared bulk_id for all items in this release
@@ -2567,11 +2662,14 @@ async function submitBulkRelease(){
     const rows = bulkItems.map(item=>({
       job_id:currentJobId, item_id:item.itemId, category:item.cat,
       qty:parseInt(item.qty)||0, release_date:date, need_by:needby,
-      supplier, status, notes, bulk_id,
+      supplier, status, notes, release_name, bulk_id,
       logged_by_username:currentUser?currentUser.username:null
     }));
     for(let i=0;i<rows.length;i+=50){
-      const batch = await sbPost('releases',rows.slice(i,i+50));
+      const slice=rows.slice(i,i+50);
+      let batch;
+      try{ batch = await sbPost('releases',slice); }
+      catch(err){ batch = await sbPost('releases', slice.map(({release_name,...r})=>r)); } // release_name column may not exist yet
       const arr = Array.isArray(batch)?batch:[batch];
       releases.push(...arr);
     }
@@ -2651,11 +2749,11 @@ function exportExcel(){
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows2),'All Line Items');
 
   const rows3=[ cust
-    ? ['Item','Category','Qty Released','Release Date','Status']
-    : ['Item','Category','Qty Released','Release Date','Need-By','Supplier','Status','Notes','Logged By'] ];
+    ? ['Release','Item','Category','Qty Released','Release Date','Status']
+    : ['Release','Item','Category','Qty Released','Release Date','Need-By','Supplier','Status','Notes','Logged By'] ];
   for(const r of releases) rows3.push(cust
-    ? [r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.status||'']
-    : [r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.need_by||'',r.supplier||'',r.status||'',r.notes||'',r.logged_by_username||'']);
+    ? [r.release_name||'',r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.status||'']
+    : [r.release_name||'',r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.need_by||'',r.supplier||'',r.status||'',r.notes||'',r.logged_by_username||'']);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows3),'Release Log');
   XLSX.writeFile(wb,'ULETrack_'+jobName.replace(/[^a-z0-9]/gi,'_')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
@@ -2801,9 +2899,10 @@ function exportPdf(opts){
     if(opts.from) rel=rel.filter(r=>r.release_date&&r.release_date>=opts.from);
     if(opts.to) rel=rel.filter(r=>r.release_date&&r.release_date<=opts.to);
     rel.sort((a,b)=>String(b.release_date||'').localeCompare(String(a.release_date||'')));
-    const cols=4+(internal?3:0)+1; // item,cat,qty,date (+needby,supplier (+loggedby)) status
+    const cols=5+(internal?3:0)+1; // release,item,cat,qty,date (+needby,supplier (+loggedby)) status
     const rows=rel.length?rel.map(r=>`<tr${r.bulk_id?' class="bulk"':''}>
-        <td>${esc(r.item_id)}${r.bulk_id?' <span class="tag">bulk</span>':''}</td>
+        <td>${esc(r.release_name||'—')}${r.bulk_id?' <span class="tag">bulk</span>':''}</td>
+        <td>${esc(r.item_id)}</td>
         <td>${esc((r.category||'').split(' ')[0])}</td>
         <td class="num">${(parseInt(r.qty)||0).toLocaleString()}</td>
         <td>${esc(r.release_date||'—')}</td>
@@ -2813,7 +2912,7 @@ function exportPdf(opts){
       </tr>`).join(''):`<tr><td colspan="${cols}" style="text-align:center;color:#999;padding:14px">No releases${(opts.from||opts.to)?' in this date range':' logged yet'}.</td></tr>`;
     const range=(opts.from||opts.to)?` (${opts.from||'start'} → ${opts.to||'today'})`:'';
     body+=`<h2>Release history${range} · ${rel.length}</h2><table>
-      <thead><tr><th>Item</th><th>Category</th><th class="num">Qty</th><th>Release date</th>${internal?'<th>Need by</th><th>Supplier</th>':''}<th>Status</th>${internal?'<th>Logged by</th>':''}</tr></thead>
+      <thead><tr><th>Release</th><th>Item</th><th>Category</th><th class="num">Qty</th><th>Release date</th>${internal?'<th>Need by</th><th>Supplier</th>':''}<th>Status</th>${internal?'<th>Logged by</th>':''}</tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
 
