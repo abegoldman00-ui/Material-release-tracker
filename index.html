@@ -712,6 +712,10 @@ function itemStatus(item){
 }
 function badge(s){const c={Pending:'b-pending',Partial:'b-partial',Released:'b-released',Delivered:'b-delivered',Installed:'b-installed'}[s]||'b-pending';return`<span class="badge ${c}">${s}</span>`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Safe to embed inside a single-quoted JS string arg within a double-quoted HTML attribute,
+// e.g. onclick="fn('${jsAttr(name)}')". Escapes backslash + apostrophe for JS, then HTML-escapes.
+// Needed for item names containing ' or " (e.g. 1-5/8" D Strut Channel 10' Lengths).
+function jsAttr(s){return esc(String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));}
 let jobReleasedQty = {}; // jobId -> total released qty across ALL its releases (for sidebar %)
 
 function jobPct(jobId){
@@ -1205,11 +1209,11 @@ function renderSearch(){
   el.innerHTML=matches.map(item=>{
     const rel=itemRelQty(item.id);
     const pct=item.totalQty>0?Math.round(rel/item.totalQty*100):0;
-    return`<div class="result-item" onclick="openModal('${esc(item.id)}')">
+    return`<div class="result-item" onclick="openModal('${jsAttr(item.id)}')">
       <div style="flex:1;min-width:0"><div class="result-desc">${esc(item.desc)}</div><div class="result-cat">${esc(item.cat)}</div></div>
       <div class="result-mini-bar"><div class="result-mini-fill" style="width:${pct}%"></div></div>
       <span class="result-pct">${pct}%</span>${badge(itemStatus(item))}
-      ${can('release')?`<button class="btn btn-blue" style="height:26px;padding:0 9px;font-size:11px" onclick="event.stopPropagation();openModal('${esc(item.id)}')">+ Release</button>`:''}
+      ${can('release')?`<button class="btn btn-blue" style="height:26px;padding:0 9px;font-size:11px" onclick="event.stopPropagation();openModal('${jsAttr(item.id)}')">+ Release</button>`:''}
     </div>`;
   }).join('');
 }
@@ -1255,7 +1259,7 @@ function renderDetail(){
         <td data-label="Remaining" style="font-weight:600;color:${remaining<0?'var(--red)':remaining===0?'var(--green)':'var(--text)'}">${remaining.toLocaleString()}</td>
         <td data-label="Progress"><div style="display:inline-block;width:48px;height:4px;background:var(--surface2);border-radius:99px;overflow:hidden;vertical-align:middle"><div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px"></div></div>&nbsp;<span style="font-size:10px;color:var(--text3)">${pct}%</span></td>
         <td data-label="Status">${badge(itemStatus(item))}</td><td data-label="Need by" style="color:var(--text3)">${esc(lastNeedBy)}</td>
-        <td class="mobile-actions"><div style="display:flex;gap:3px;justify-content:flex-end">${canEditQty?`<button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openQtyChange('${item.dbId}')" title="Change quantity (change order)">✎ Qty</button>`:''}<button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openModal('${esc(item.id)}')" title="Releases">&#9776;</button></div></td>
+        <td class="mobile-actions"><div style="display:flex;gap:3px;justify-content:flex-end">${canEditQty?`<button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openQtyChange('${item.dbId}')" title="Change quantity (change order)">✎ Qty</button>`:''}<button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openModal('${jsAttr(item.id)}')" title="Releases">&#9776;</button></div></td>
       </tr>`;
     }).join('');
   const pag=document.getElementById('detail-pag');
@@ -1546,8 +1550,8 @@ function buildItemModal(item,editingId=null){
           <div class="form-row"><label>Status</label><select id="e-st">${['Released','Pending','Delivered','Installed'].map(s=>`<option${r.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
           <div class="form-row"><label>Notes</label><textarea id="e-notes">${esc(r.notes||'')}</textarea></div>
           <div style="display:flex;gap:7px;justify-content:flex-end;margin-top:.45rem">
-            <button class="btn" onclick="buildItemModal(currentItems().find(i=>i.id==='${esc(item.id)}'))">Cancel</button>
-            <button class="btn btn-blue" id="save-btn" onclick="saveEdit('${r.id}','${esc(item.id)}')">Save changes</button>
+            <button class="btn" onclick="buildItemModal(currentItems().find(i=>i.id==='${jsAttr(item.id)}'))">Cancel</button>
+            <button class="btn btn-blue" id="save-btn" onclick="saveEdit('${r.id}','${jsAttr(item.id)}')">Save changes</button>
           </div></div>`;
       }
       return`<div class="release-item">
@@ -1555,7 +1559,7 @@ function buildItemModal(item,editingId=null){
           <span style="font-size:13px;font-weight:600;flex:1">${(parseInt(r.qty)||0).toLocaleString()} units</span>
           ${badge(r.status||'Released')}
           ${editable?`<div style="display:flex;gap:3px;margin-left:auto">
-            <button class="btn" style="padding:0 7px;height:24px;font-size:11px;color:var(--blue)" onclick="buildItemModal(currentItems().find(i=>i.id==='${esc(item.id)}'),'${r.id}')">Edit</button>
+            <button class="btn" style="padding:0 7px;height:24px;font-size:11px;color:var(--blue)" onclick="buildItemModal(currentItems().find(i=>i.id==='${jsAttr(item.id)}'),'${r.id}')">Edit</button>
             <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--red)" onclick="deleteRelease('${r.id}')">✕</button>
           </div>`:''}
         </div>
@@ -1588,7 +1592,7 @@ function buildItemModal(item,editingId=null){
     <div class="form-row"><label>Notes</label><textarea id="f-notes" placeholder="Any additional info..."></textarea></div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-blue" id="save-btn" onclick="saveNewRelease('${esc(item.id)}','${esc(item.cat)}')">+ Log release</button>
+      <button class="btn btn-blue" id="save-btn" onclick="saveNewRelease('${jsAttr(item.id)}','${jsAttr(item.cat)}')">+ Log release</button>
     </div>`:`
     <div class="modal-actions">
       <button class="btn" onclick="closeModal()">Close</button>
@@ -2509,7 +2513,7 @@ function renderBulkSearch(){
   el.innerHTML = matches.map(item => {
     const rel = itemRelQty(item.id);
     const remaining = item.totalQty - rel;
-    return `<div class="result-item" style="padding:7px 10px" onclick="addBulkItem('${esc(item.id)}')">
+    return `<div class="result-item" style="padding:7px 10px" onclick="addBulkItem('${jsAttr(item.id)}')">
       <div style="flex:1;min-width:0">
         <div class="result-desc" style="font-size:12px">${esc(item.desc)}</div>
         <div class="result-cat">${esc(item.cat)} · ${remaining.toLocaleString()} remaining</div>
