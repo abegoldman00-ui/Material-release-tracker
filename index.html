@@ -652,9 +652,10 @@ function can(action){
 }
 
 async function sbGet(table,params=''){const r=await fetch(`${SB_URL}/rest/v1/${table}?${params}`,{headers:HDR});if(!r.ok)throw await r.text();return r.json();}
-async function sbPost(table,body){const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:HDR,body:JSON.stringify(body)});if(!r.ok)throw await r.text();return r.json();}
-async function sbPatch(table,id,body){const r=await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:'PATCH',headers:{...HDR,'Prefer':'return=representation'},body:JSON.stringify(body)});if(!r.ok)throw await r.text();return r.json();}
-async function sbDelete(table,id){const r=await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:'DELETE',headers:HDR});if(!r.ok)throw await r.text();}
+let _lastSelfWrite=0; // timestamp of this client's most recent write — used to ignore Realtime echoes of our own changes
+async function sbPost(table,body){_lastSelfWrite=Date.now();const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:HDR,body:JSON.stringify(body)});if(!r.ok)throw await r.text();_lastSelfWrite=Date.now();return r.json();}
+async function sbPatch(table,id,body){_lastSelfWrite=Date.now();const r=await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:'PATCH',headers:{...HDR,'Prefer':'return=representation'},body:JSON.stringify(body)});if(!r.ok)throw await r.text();_lastSelfWrite=Date.now();return r.json();}
+async function sbDelete(table,id){_lastSelfWrite=Date.now();const r=await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:'DELETE',headers:HDR});if(!r.ok)throw await r.text();_lastSelfWrite=Date.now();}
 
 // ─── 70HY default BOM (pre-loaded job) ────────────────────────────────────────
 const DEFAULT_JOB_ID = '70hy-steel';
@@ -931,7 +932,7 @@ async function pollTick(){
   if(currentUser){
     try{
       await syncCurrentUser();
-      if(currentUser){
+      if(currentUser && !_modalOpen()){   // don't re-render behind an open modal (e.g. mid bulk-release entry)
         await syncJobsList();
         if(currentJobId){
           const job=jobs.find(j=>j.id===currentJobId);
@@ -964,8 +965,10 @@ setTimeout(pollTick, 15000);
 // enabled the subscription is harmless and the poll keeps things current.
 let _rtStarted=false, realtimeOk=false;
 function _debounce(fn,ms){ let t; return ()=>{ clearTimeout(t); t=setTimeout(fn,ms); }; }
-const rtJobs=_debounce(async()=>{ if(!currentUser)return; try{ await syncJobsList(); if(currentJobId){ const j=jobs.find(x=>x.id===currentJobId); if(j){ setJobHeader(j); refreshAll(); } } }catch(e){} },350);
-const rtReleases=_debounce(async()=>{ if(!currentUser)return; try{ await loadJobReleaseTotals(); renderSidebar(); if(currentJobId){ releases=await sbGet('releases',`job_id=eq.${encodeURIComponent(currentJobId)}&order=created_at.asc&limit=5000`); refreshAll(); loadActivity(); } }catch(e){} },350);
+const _selfWriteRecent=()=>Date.now()-_lastSelfWrite < 3000; // ignore Realtime echoes of our own writes (we already update locally)
+const _modalOpen=()=>{ const o=document.getElementById('overlay'); return o && o.classList.contains('open'); }; // don't re-render behind an open modal
+const rtJobs=_debounce(async()=>{ if(!currentUser||_selfWriteRecent()||_modalOpen())return; try{ await syncJobsList(); if(currentJobId){ const j=jobs.find(x=>x.id===currentJobId); if(j){ setJobHeader(j); refreshAll(); } } }catch(e){} },600);
+const rtReleases=_debounce(async()=>{ if(!currentUser||_selfWriteRecent()||_modalOpen())return; try{ await loadJobReleaseTotals(); renderSidebar(); if(currentJobId){ releases=await sbGet('releases',`job_id=eq.${encodeURIComponent(currentJobId)}&order=created_at.asc&limit=5000`); refreshAll(); loadActivity(); } }catch(e){} },600);
 const rtActivity=_debounce(()=>{ loadActivity(); },350);
 const rtUser=_debounce(()=>{ syncCurrentUser(); },300);
 function startRealtime(){
