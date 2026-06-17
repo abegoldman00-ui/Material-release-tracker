@@ -678,6 +678,7 @@ let activeModal = null;
 let detailPage=1, logPage=1;
 const PAGE=25;
 let logSortCol='release_date', logSortDir='desc';
+let logGroupMap={}; // gid -> {ids:[releaseId...], name} for inline rename in the release log
 let collapsedCustomers={};   // customer name -> true if collapsed in sidebar
 let newJobAssignees=new Set(); // user ids checked in the new-job modal
 
@@ -1377,14 +1378,19 @@ function renderLog(){
 
   const rendered = [];
   let rowNum = 0;
-  for(const g of groups){
+  logGroupMap = {};
+  for(let gi=0; gi<groups.length; gi++){
+    const g = groups[gi];
     const items = g.items;
+    const gid = 'lg'+gi;
+    logGroupMap[gid] = { ids: items.map(x=>x.id), name: g.name||'' };
+    const pencil = can('release') ? `<button class="rel-rename" title="Rename release" onclick="beginRename('${gid}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:0 2px;line-height:1">✎</button>` : '';
     // Standalone single release (no name, no bulk) → plain numbered row
     if(g.key.startsWith('solo::')){
       const r = items[0];
       rowNum++;
       rendered.push(`<tr>
-        <td class="mobile-title" title="${esc(r.item_id)}"><span style="color:var(--text3);font-size:10px;margin-right:5px">${rowNum}</span>${esc(r.item_id)}</td>
+        <td class="mobile-title" id="relhead-${gid}" title="${esc(r.item_id)}"><span style="color:var(--text3);font-size:10px;margin-right:5px">${rowNum}</span>${esc(r.item_id)} ${pencil}</td>
         <td data-label="Category"><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc((r.category||'').split(' ')[0])}</span></td>
         <td data-label="Qty" style="font-weight:600">${(parseInt(r.qty)||0).toLocaleString()}</td>
         <td data-label="Release date" style="font-family:'DM Mono',monospace;font-size:11px">${r.release_date||'—'}</td>
@@ -1409,8 +1415,8 @@ function renderLog(){
     const label = g.name ? esc(g.name) : 'Bulk release';
     rendered.push(`<tr style="background:var(--blue-bg);border-top:2px solid var(--blue-border)">
       <td class="mobile-fullcell" colspan="10" style="padding:7px 11px">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span style="font-size:11.5px;font-weight:700;color:var(--blue)">📦 ${label}</span>
+        <div id="relhead-${gid}" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:11.5px;font-weight:700;color:var(--blue)">📦 ${label}</span>${pencil}
           <span style="font-size:11px;color:var(--text2)">${items.length} item${items.length!==1?'s':''} · ${totalQty.toLocaleString()} units${r0.release_date?' · '+r0.release_date:''}${(r0.supplier&&!isCustomer())?' · '+esc(r0.supplier):''}${r0.status?' · '+r0.status:''}</span>
           ${(r0.logged_by_username&&!isCustomer())?`<span style="background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">${esc(r0.logged_by_username)}</span>`:''}
           ${(can('release')&&singleBulk)?`<div style="margin-left:auto;display:flex;gap:4px">
@@ -1433,6 +1439,51 @@ function renderLog(){
     th.classList.remove('sort-asc','sort-desc');
     if(th.dataset.col===logSortCol)th.classList.add(logSortDir==='asc'?'sort-asc':'sort-desc');
   });
+}
+
+// ─── Inline rename of a release directly in the log ──────────────────────────
+function beginRename(gid){
+  if(!can('release')) return;
+  const g = logGroupMap[gid];
+  const cell = document.getElementById('relhead-'+gid);
+  if(!g || !cell) return;
+  cell.dataset.orig = cell.innerHTML; // so Cancel can restore without a full re-render
+  cell.innerHTML = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+    <input id="rn-input" type="text" value="${esc(g.name||'')}" placeholder="Release name / #" autocomplete="off"
+      style="height:26px;font-size:12px;border:1px solid var(--blue-border);border-radius:6px;padding:0 8px;background:var(--surface2);color:var(--text);min-width:170px">
+    <button class="btn btn-blue" style="height:26px;padding:0 10px;font-size:11px" onclick="saveRename('${gid}')">Save</button>
+    <button class="btn" style="height:26px;padding:0 8px;font-size:11px" onclick="cancelRename('${gid}')">Cancel</button>
+  </div>`;
+  const inp = document.getElementById('rn-input');
+  if(inp){
+    inp.focus(); inp.select();
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); saveRename(gid); } else if(e.key==='Escape'){ cancelRename(gid); } });
+  }
+}
+function cancelRename(gid){
+  const cell = document.getElementById('relhead-'+gid);
+  if(cell && cell.dataset.orig!=null){ cell.innerHTML = cell.dataset.orig; delete cell.dataset.orig; }
+  else renderLog();
+}
+async function saveRename(gid){
+  if(!can('release')) return;
+  const g = logGroupMap[gid];
+  const inp = document.getElementById('rn-input');
+  if(!g || !inp) return;
+  const name = (inp.value||'').trim()||null;
+  inp.disabled = true;
+  try{
+    for(const id of g.ids){
+      const updated = await sbPatch('releases', id, {release_name:name});
+      const arr = Array.isArray(updated)?updated:[updated];
+      const idx = releases.findIndex(x=>x.id===id);
+      if(idx>=0 && arr[0]) releases[idx] = arr[0];
+    }
+    renderLog();
+    refreshAll();
+    logActivity('release_edited', name?`renamed a release to "${name}"`:'cleared a release name').then(loadActivity);
+    toast('✓ Release name updated');
+  }catch(e){ alert('Rename failed: '+e); renderLog(); }
 }
 // ─── Edit / delete bulk releases ─────────────────────────────────────────────
 function openEditBulk(bulkId){
