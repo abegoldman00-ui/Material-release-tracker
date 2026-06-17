@@ -2949,22 +2949,45 @@ function exportPdf(opts){
     let rel=[...releases];
     if(opts.from) rel=rel.filter(r=>r.release_date&&r.release_date>=opts.from);
     if(opts.to) rel=rel.filter(r=>r.release_date&&r.release_date<=opts.to);
-    rel.sort((a,b)=>String(b.release_date||'').localeCompare(String(a.release_date||'')));
-    const cols=5+(internal?3:0)+1; // release,item,cat,qty,date (+needby,supplier (+loggedby)) status
-    const rows=rel.length?rel.map(r=>`<tr${r.bulk_id?' class="bulk"':''}>
-        <td>${esc(r.release_name||'—')}${r.bulk_id?' <span class="tag">bulk</span>':''}</td>
-        <td>${esc(r.item_id)}</td>
-        <td>${esc((r.category||'').split(' ')[0])}</td>
-        <td class="num">${(parseInt(r.qty)||0).toLocaleString()}</td>
-        <td>${esc(r.release_date||'—')}</td>
-        ${internal?`<td>${esc(r.need_by||'—')}</td><td>${esc(r.supplier||'—')}</td>`:''}
-        <td>${esc(r.status||'Released')}</td>
-        ${internal?`<td>${esc(r.logged_by_username||'—')}</td>`:''}
-      </tr>`).join(''):`<tr><td colspan="${cols}" style="text-align:center;color:#999;padding:14px">No releases${(opts.from||opts.to)?' in this date range':' logged yet'}.</td></tr>`;
+    // Group by release (name → bulk_id → standalone single), each separated by a banded header, sorted by date.
+    const lg=[], lgi={};
+    for(const r of rel){
+      const nm=(r.release_name||'').trim();
+      const key=nm?('name::'+nm.toLowerCase()):(r.bulk_id?('bulk::'+r.bulk_id):('solo::'+r.id));
+      if(lgi[key]==null){ lgi[key]=lg.length; lg.push({name:nm,bulk:!!r.bulk_id,items:[]}); }
+      lg[lgi[key]].items.push(r);
+    }
+    lg.forEach(g=>{
+      g.items.sort((a,b)=>String(b.release_date||'').localeCompare(String(a.release_date||'')));
+      g.date=g.items.map(x=>x.release_date||'').filter(Boolean).sort().at(-1)||'';
+      g.total=g.items.reduce((s,x)=>s+(parseInt(x.qty)||0),0);
+    });
+    lg.sort((a,b)=>String(b.date).localeCompare(String(a.date))); // most recent release first
+    const cols=5+(internal?3:0); // item,cat,qty,date (+needby,supplier) status (+loggedby)
+    let rowsHtml='';
+    if(!lg.length){
+      rowsHtml=`<tr><td colspan="${cols}" style="text-align:center;color:#999;padding:14px">No releases${(opts.from||opts.to)?' in this date range':' logged yet'}.</td></tr>`;
+    } else {
+      for(const g of lg){
+        const label = g.name ? esc(g.name) : (g.bulk ? 'Bulk release' : 'Single release');
+        rowsHtml += `<tr class="relhdr"><td colspan="${cols}">📦 ${label}<span class="rmeta"> · ${g.date||'no date'} · ${g.items.length} item${g.items.length!==1?'s':''} · ${g.total.toLocaleString()} units${(internal&&g.items[0].supplier)?' · '+esc(g.items[0].supplier):''}</span></td></tr>`;
+        for(const r of g.items){
+          rowsHtml += `<tr>
+            <td>${esc(r.item_id)}</td>
+            <td>${esc((r.category||'').split(' ')[0])}</td>
+            <td class="num">${(parseInt(r.qty)||0).toLocaleString()}</td>
+            <td>${esc(r.release_date||'—')}</td>
+            ${internal?`<td>${esc(r.need_by||'—')}</td><td>${esc(r.supplier||'—')}</td>`:''}
+            <td>${esc(r.status||'Released')}</td>
+            ${internal?`<td>${esc(r.logged_by_username||'—')}</td>`:''}
+          </tr>`;
+        }
+      }
+    }
     const range=(opts.from||opts.to)?` (${opts.from||'start'} → ${opts.to||'today'})`:'';
     body+=`<h2>Release history${range} · ${rel.length}</h2><table>
-      <thead><tr><th>Release</th><th>Item</th><th>Category</th><th class="num">Qty</th><th>Release date</th>${internal?'<th>Need by</th><th>Supplier</th>':''}<th>Status</th>${internal?'<th>Logged by</th>':''}</tr></thead>
-      <tbody>${rows}</tbody></table>`;
+      <thead><tr><th>Item</th><th>Category</th><th class="num">Qty</th><th>Release date</th>${internal?'<th>Need by</th><th>Supplier</th>':''}<th>Status</th>${internal?'<th>Logged by</th>':''}</tr></thead>
+      <tbody>${rowsHtml}</tbody></table>`;
   }
 
   const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(jobName)} — ULETrack Report</title>
@@ -3001,6 +3024,8 @@ function exportPdf(opts){
     td{padding:5px 8px;border-bottom:1px solid #efede7}
     tr{page-break-inside:avoid}
     tr.bulk td{background:#eef4fb}
+    tr.relhdr td{background:#eaf2fb;border-top:2px solid #bcd5ee;border-bottom:1px solid #cfe0f2;font-weight:700;color:#1a5fa8;font-size:10.5px;padding:6px 8px}
+    tr.relhdr .rmeta{font-weight:400;color:#555;font-size:10px}
     tfoot td{border-top:2px solid #ddd;font-weight:700;background:#faf9f5}
     .tag{background:#1a5fa8;color:#fff;border-radius:3px;font-size:8px;padding:1px 5px;text-transform:uppercase;vertical-align:middle;white-space:nowrap}
     .foot{margin-top:26px;font-size:9px;color:#9e9b96;text-align:center;border-top:1px solid #efede7;padding-top:9px}
