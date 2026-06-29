@@ -3000,8 +3000,8 @@ function generateOrderAck(items){
     .head .meta b{color:#1a5fa8}
     h1{font-size:21px;margin:2px 0 3px;letter-spacing:-.01em}
     .ack-title{font-size:16px;font-weight:700;color:#1a5fa8;margin:0 0 14px;text-transform:uppercase;letter-spacing:.04em}
-    .cust{font-size:12.5px;color:#555;display:flex;align-items:center;gap:6px;margin-bottom:4px}
-    .cust .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+    .cust{font-size:17px;font-weight:700;color:#333;display:flex;align-items:center;gap:8px;margin:6px 0 8px}
+    .cust .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
     .details{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin:14px 0 18px;font-size:12px}
     .details .lbl{color:#6b6860;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
     .details .val{font-weight:600;color:#1a1917;margin-bottom:6px}
@@ -3023,7 +3023,7 @@ function generateOrderAck(items){
       <div class="meta"><b>ULETrack</b> — Order Acknowledgement<br>by ULE Group${by?' · Prepared by '+esc(by):''}<br>${esc(now)}</div>
     </div>
     <h1>${esc(jobName)}</h1>
-    ${customer?`<div class="cust"><span class="dot" style="background:${custColor}"></span>Customer: <strong>${esc(customer)}</strong></div>`:''}
+    ${customer?`<div class="cust"><span class="dot" style="background:${custColor}"></span>${esc(customer)}</div>`:''}
     <div class="ack-title">Order Acknowledgement${relName?' — '+esc(relName):''}</div>
     <div class="details">
       <div><div class="lbl">Acknowledgement #</div><div class="val">${ackNum}</div></div>
@@ -3318,8 +3318,8 @@ function exportPdf(opts){
     .head .meta{text-align:right;font-size:10.5px;color:#6b6860;line-height:1.5}
     .head .meta b{color:#1a5fa8}
     h1{font-size:21px;margin:2px 0 3px;letter-spacing:-.01em}
-    .cust{font-size:12.5px;color:#555;display:flex;align-items:center;gap:6px;margin-bottom:4px}
-    .cust .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+    .cust{font-size:17px;font-weight:700;color:#333;display:flex;align-items:center;gap:8px;margin:6px 0 8px}
+    .cust .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
     .note{font-size:12px;color:#444;background:#f7f6f2;border-left:3px solid #1a5fa8;padding:7px 11px;border-radius:0 6px 6px 0;margin:10px 0 18px}
     .kpis{display:flex;gap:10px;margin:16px 0 4px}
     .kpi{flex:1;border:1px solid #e5e3dc;border-radius:9px;padding:11px 13px;background:#fcfbf8}
@@ -3356,7 +3356,7 @@ function exportPdf(opts){
       <div class="meta"><b>ULETrack</b> — Material Release Report<br>by ULE Group${by?' · Prepared by '+esc(by):''}<br>${esc(now)}</div>
     </div>
     <h1>${esc(jobName)}</h1>
-    ${customer?`<div class="cust"><span class="dot" style="background:${custColor}"></span>Customer: <strong>${esc(customer)}</strong></div>`:''}
+    ${customer?`<div class="cust"><span class="dot" style="background:${custColor}"></span>${esc(customer)}</div>`:''}
     ${opts.note?`<div class="note">${esc(opts.note)}</div>`:'<div style="margin-bottom:6px"></div>'}
     ${body}
     <div class="foot">ULETrack · by ULE Group · Powered by Partnerships · uletrack.com</div>
