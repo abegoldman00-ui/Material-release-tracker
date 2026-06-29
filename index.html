@@ -1783,6 +1783,8 @@ async function saveNewRelease(itemId,category){
     refreshAll();
     logActivity('release_logged',`logged ${qty.toLocaleString()}× ${itemId}`).then(loadActivity);
     toast('✓ Release logged');
+    const savedRow=Array.isArray(row)?row[0]:row;
+    generateOrderAck([{item_id:itemId,category,qty,release_date:base.release_date,need_by:base.need_by,supplier:base.supplier,status:base.status,notes:base.notes,release_name}]);
   }catch(e){alert('Save failed: '+e);}
   setBtnLoading('save-btn',false,'+ Log release');
 }
@@ -2740,6 +2742,7 @@ async function submitBulkRelease(){
     refreshAll();
     logActivity('bulk_released',`released ${nItems} item${nItems!==1?'s':''} (${totalUnits.toLocaleString()} units)${supplier?' from '+supplier:''}`).then(loadActivity);
     toast(`✓ ${nItems} item${nItems!==1?'s':''} released`);
+    generateOrderAck(rows.map(r=>({item_id:r.item_id,category:r.category,qty:r.qty,release_date:date,need_by:needby,supplier,status,notes,release_name})));
   }catch(e){ alert('Failed to submit: '+e); }
   setBtnLoading('br-submit-btn',false,'📦 Submit release');
 }
@@ -2940,6 +2943,96 @@ function fuzzyMatch(a,b){
   let hits=0;
   for(const w of aWords){ if(w.length>=2 && bWords.some(bw=>bw===w||bw.includes(w)||w.includes(bw))) hits++; }
   return aWords.length?hits/aWords.length:0;
+}
+
+// ─── Order Acknowledgement PDF ───────────────────────────────────────────────
+function generateOrderAck(items){
+  if(!items||!items.length) return;
+  const job=jobs.find(j=>j.id===currentJobId);
+  const jobName=job?job.name:'Job';
+  const customer=job&&job.customer?job.customer:'';
+  const custColor=customer?customerColor(customer):'#1a5fa8';
+  const logo=(document.querySelector('.sidebar-logo img')||{}).src||'';
+  const now=new Date().toLocaleString();
+  const by=currentUser?currentUser.username:'';
+  const relName=items[0].release_name||'';
+  const relDate=items[0].release_date||new Date().toISOString().slice(0,10);
+  const supplier=items[0].supplier||'';
+  const needBy=items[0].need_by||'';
+  const status=items[0].status||'Released';
+  const notes=items[0].notes||'';
+  const totalUnits=items.reduce((s,r)=>s+(parseInt(r.qty)||0),0);
+  const ackNum='ACK-'+Date.now().toString(36).toUpperCase();
+
+  const rows=items.map((r,i)=>`<tr>
+    <td style="text-align:center">${i+1}</td>
+    <td>${esc(r.item_id)}</td>
+    <td>${esc(r.category||'')}</td>
+    <td class="num">${(parseInt(r.qty)||0).toLocaleString()}</td>
+    <td>${esc(r.status||status)}</td>
+  </tr>`).join('');
+
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Order Acknowledgement — ${esc(jobName)}</title>
+  <style>
+    *{box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;color:#1a1917;margin:0;padding:34px 32px;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .brandbar{height:5px;background:linear-gradient(90deg,#1a5fa8,#2f78c4);border-radius:3px;margin-bottom:14px}
+    .head{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid #e5e3dc;margin-bottom:16px}
+    .head img{height:46px;width:auto}
+    .head .meta{text-align:right;font-size:10.5px;color:#6b6860;line-height:1.5}
+    .head .meta b{color:#1a5fa8}
+    h1{font-size:21px;margin:2px 0 3px;letter-spacing:-.01em}
+    .ack-title{font-size:16px;font-weight:700;color:#1a5fa8;margin:0 0 14px;text-transform:uppercase;letter-spacing:.04em}
+    .cust{font-size:12.5px;color:#555;display:flex;align-items:center;gap:6px;margin-bottom:4px}
+    .cust .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+    .details{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin:14px 0 18px;font-size:12px}
+    .details .lbl{color:#6b6860;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+    .details .val{font-weight:600;color:#1a1917;margin-bottom:6px}
+    table{width:100%;border-collapse:collapse;font-size:11px;margin-top:4px}
+    th{text-align:left;background:#f3f2ee;border-bottom:1px solid #ddd;padding:6px 8px;font-size:9.5px;text-transform:uppercase;letter-spacing:.03em;color:#6b6860}
+    th.num,td.num{text-align:right}
+    td{padding:5px 8px;border-bottom:1px solid #efede7}
+    tfoot td{border-top:2px solid #ddd;font-weight:700;background:#faf9f5}
+    .notes{margin-top:16px;font-size:11px;color:#444;background:#f7f6f2;border-left:3px solid #1a5fa8;padding:7px 11px;border-radius:0 6px 6px 0}
+    .sig{display:flex;justify-content:space-between;margin-top:40px;padding-top:8px}
+    .sig-box{width:44%;border-top:1px solid #ccc;padding-top:6px;font-size:10px;color:#6b6860}
+    .foot{margin-top:26px;font-size:9px;color:#9e9b96;text-align:center;border-top:1px solid #efede7;padding-top:9px}
+    @media print{body{padding:0}@page{margin:14mm}}
+  </style></head>
+  <body onload="window.print()">
+    <div class="brandbar"></div>
+    <div class="head">
+      ${logo?`<img src="${logo}" alt="ULE Group">`:'<div style="font-weight:700;font-size:18px;color:#1a5fa8">ULE GROUP</div>'}
+      <div class="meta"><b>ULETrack</b> — Order Acknowledgement<br>by ULE Group${by?' · Prepared by '+esc(by):''}<br>${esc(now)}</div>
+    </div>
+    <h1>${esc(jobName)}</h1>
+    ${customer?`<div class="cust"><span class="dot" style="background:${custColor}"></span>Customer: <strong>${esc(customer)}</strong></div>`:''}
+    <div class="ack-title">Order Acknowledgement${relName?' — '+esc(relName):''}</div>
+    <div class="details">
+      <div><div class="lbl">Acknowledgement #</div><div class="val">${ackNum}</div></div>
+      <div><div class="lbl">Release date</div><div class="val">${esc(relDate)}</div></div>
+      ${supplier?`<div><div class="lbl">Supplier / Vendor</div><div class="val">${esc(supplier)}</div></div>`:'<div></div>'}
+      ${needBy?`<div><div class="lbl">Need-by / Delivery date</div><div class="val">${esc(needBy)}</div></div>`:'<div></div>'}
+      <div><div class="lbl">Status</div><div class="val">${esc(status)}</div></div>
+      <div><div class="lbl">Total items</div><div class="val">${items.length} item${items.length!==1?'s':''} · ${totalUnits.toLocaleString()} units</div></div>
+    </div>
+    <table>
+      <thead><tr><th style="width:6%;text-align:center">#</th><th style="width:40%">Item description</th><th style="width:22%">Category</th><th class="num" style="width:16%">Quantity</th><th style="width:16%">Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="3" style="text-align:right">Total</td><td class="num">${totalUnits.toLocaleString()}</td><td></td></tr></tfoot>
+    </table>
+    ${notes?`<div class="notes"><strong>Notes:</strong> ${esc(notes)}</div>`:''}
+    <div class="sig">
+      <div class="sig-box">Authorized by</div>
+      <div class="sig-box">Received by</div>
+    </div>
+    <div class="foot">ULETrack · by ULE Group · Powered by Partnerships · uletrack.com</div>
+  </body></html>`;
+
+  const win=window.open('','_blank');
+  if(!win){ toast('Allow pop-ups to view the order acknowledgement.'); return; }
+  win.document.write(html);
+  win.document.close();
 }
 
 function closeModal(){document.getElementById('overlay').classList.remove('open');activeModal=null;}
