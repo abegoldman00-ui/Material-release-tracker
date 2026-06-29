@@ -2620,7 +2620,17 @@ function openBulkRelease(){
       </div>
     </div>
     <div class="form-row"><label>Notes (applies to all items)</label><input type="text" id="br-notes" placeholder="e.g. Truck #4 delivery"></div>
-    <div class="sec-label">Items in this release</div>
+    <div class="sec-label">Import from file</div>
+    <div class="drop-zone" id="br-drop-zone" onclick="document.getElementById('br-file-input').click()"
+      ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')"
+      ondrop="handleBulkFileDrop(event)">
+      <input type="file" id="br-file-input" accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp,.docx" onchange="handleBulkFileSelect(this.files[0])">
+      <div class="drop-zone-icon">📄</div>
+      <div class="drop-zone-title">Drop a release document or click to browse</div>
+      <div class="drop-zone-sub">Screenshot, PDF, Excel, CSV, or Word doc — items will be auto-matched</div>
+    </div>
+    <div id="br-ai-status" style="display:none"></div>
+    <div class="sec-label" style="margin-top:.8rem">Items in this release</div>
     <div class="search-wrap" style="margin-bottom:.5rem">
       <input type="text" id="br-search" placeholder="Search and add items..." oninput="renderBulkSearch()" autocomplete="off">
       <svg style="position:absolute;right:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2;pointer-events:none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -2732,6 +2742,204 @@ async function submitBulkRelease(){
     toast(`✓ ${nItems} item${nItems!==1?'s':''} released`);
   }catch(e){ alert('Failed to submit: '+e); }
   setBtnLoading('br-submit-btn',false,'📦 Submit release');
+}
+
+// ─── Bulk release file import ────────────────────────────────────────────────
+function handleBulkFileDrop(e){
+  e.preventDefault();
+  document.getElementById('br-drop-zone').classList.remove('drag-over');
+  const file=e.dataTransfer.files[0];
+  if(file) handleBulkFileSelect(file);
+}
+
+function showBrStatus(state,msg){
+  const el=document.getElementById('br-ai-status');
+  if(!el)return;
+  el.style.display='block';
+  const icon={loading:'<span class="spinner"></span>',done:'✓',error:'⚠️'}[state]||'';
+  const color=state==='error'?'var(--red-bg)':state==='done'?'var(--green-bg)':'var(--blue-bg)';
+  const borderColor=state==='error'?'var(--red-border)':state==='done'?'var(--green-border)':'var(--blue-border)';
+  const textColor=state==='error'?'var(--red)':state==='done'?'var(--green)':'var(--blue)';
+  el.innerHTML=`<div class="ai-status" style="background:${color};border-color:${borderColor};color:${textColor}">${icon} ${msg}</div>`;
+}
+
+function resetBrDropZone(){
+  document.getElementById('br-drop-zone').innerHTML=`
+    <input type="file" id="br-file-input" accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp,.docx" onchange="handleBulkFileSelect(this.files[0])">
+    <div class="drop-zone-icon">📄</div>
+    <div class="drop-zone-title">Drop a release document or click to browse</div>
+    <div class="drop-zone-sub">Screenshot, PDF, Excel, CSV, or Word doc — items will be auto-matched</div>`;
+}
+
+async function handleBulkFileSelect(file){
+  if(!file) return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  const dz=document.getElementById('br-drop-zone');
+  dz.innerHTML=`<div class="file-chip"><span class="spinner"></span> ${esc(file.name)}</div>`;
+
+  try{
+    let parsed=[];
+    if(['xlsx','xls'].includes(ext)){
+      showBrStatus('loading','Parsing spreadsheet…');
+      parsed=await parseBulkExcel(file);
+    } else if(ext==='csv'){
+      showBrStatus('loading','Parsing CSV…');
+      parsed=await parseBulkCsv(file);
+    } else if(ext==='pdf'){
+      showBrStatus('loading','Reading PDF…');
+      parsed=await parseOrderPdf(file);
+      if(!parsed.length){
+        showBrStatus('loading','Trying AI extraction…');
+        parsed=await parseBulkWithAI(file,'pdf');
+      }
+    } else if(['png','jpg','jpeg','webp'].includes(ext)){
+      showBrStatus('loading','Reading image with AI…');
+      parsed=await parseBulkWithAI(file,ext);
+    } else if(ext==='docx'){
+      showBrStatus('loading','Reading Word document with AI…');
+      parsed=await parseBulkWithAI(file,'docx');
+    } else {
+      showBrStatus('error','Unsupported file type.');
+      resetBrDropZone(); return;
+    }
+
+    if(!parsed.length){
+      showBrStatus('error','No items found in this file. Try adding items manually.');
+      resetBrDropZone(); return;
+    }
+
+    const matched=matchParsedToJob(parsed);
+    if(!matched.length){
+      showBrStatus('error',`Found ${parsed.length} items but none matched this job's BOM. Try adding manually.`);
+      resetBrDropZone(); return;
+    }
+
+    for(const m of matched){
+      if(!bulkItems.find(b=>b.itemId===m.itemId)) bulkItems.push(m);
+    }
+    renderBulkItems();
+    dz.innerHTML=`<div class="file-chip">📄 ${esc(file.name)} <span style="opacity:.6;cursor:pointer" onclick="resetBrDropZone()">✕</span></div>`;
+    showBrStatus('done',`Matched ${matched.length} of ${parsed.length} items from file`);
+  }catch(e){
+    console.error(e);
+    showBrStatus('error','Failed to parse file: '+e);
+    resetBrDropZone();
+  }
+}
+
+async function parseBulkExcel(file){
+  const buf=await file.arrayBuffer();
+  const wb=XLSX.read(buf,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+  return extractReleaseItems(rows);
+}
+
+async function parseBulkCsv(file){
+  const text=await file.text();
+  const rows=text.split('\n').map(r=>r.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+  return extractReleaseItems(rows);
+}
+
+function extractReleaseItems(rows){
+  const items=[];
+  let dataStart=0;
+  for(let i=0;i<Math.min(5,rows.length);i++){
+    const row=rows[i].map(c=>String(c).toLowerCase());
+    if(row.some(c=>c.includes('description')||c.includes('item')||c.includes('material')||c.includes('product'))) { dataStart=i+1; break; }
+  }
+  for(let i=dataStart;i<rows.length;i++){
+    const row=rows[i];
+    if(!row||row.every(c=>!c)) continue;
+    let qty=0;
+    for(let j=row.length-1;j>=0;j--){
+      const n=parseInt(String(row[j]).replace(/[^0-9]/g,''));
+      if(n>0){qty=n;break;}
+    }
+    if(!qty) continue;
+    const name=String(row[0]||'').trim();
+    if(!name||name.length<2) continue;
+    items.push({name,qty});
+  }
+  return items;
+}
+
+async function parseBulkWithAI(file, ext){
+  const base64=await fileToBase64(file);
+  const mediaMap={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'};
+  const mediaType=mediaMap[ext]||'application/octet-stream';
+  const isPdf=ext==='pdf'; const isDoc=ext==='docx';
+  const contentBlock=(isPdf||isDoc)
+    ? {type:'document',source:{type:'base64',media_type:mediaType,data:base64}}
+    : {type:'image',source:{type:'base64',media_type:mediaType,data:base64}};
+
+  const jobItems=currentItems();
+  const bomList=jobItems.slice(0,200).map(i=>`- ${i.desc}`).join('\n');
+
+  const prompt=`You are parsing a material release / delivery / shipment document for a construction project.
+Extract ALL line items with their quantities. Match item names to the project's BOM when possible.
+
+Here are the items in this project's BOM:
+${bomList}
+
+Respond ONLY with a valid JSON array, no markdown, no explanation:
+[{"name":"item description matching BOM name if possible","qty":1234}, ...]
+
+Rules:
+- name: match to the closest BOM item name above if it's clearly the same material
+- qty: integer quantity
+- Skip headers, totals, subtotals, and blank rows
+- Include every line item you can find`;
+
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:4000,
+      messages:[{role:'user',content:[contentBlock,{type:'text',text:prompt}]}]
+    })
+  });
+  const data=await resp.json();
+  const text=data.content?.find(b=>b.type==='text')?.text||'';
+  const clean=text.replace(/```json|```/g,'').trim();
+  return JSON.parse(clean);
+}
+
+function matchParsedToJob(parsed){
+  const items=currentItems().filter(isReleasable);
+  const matched=[];
+  for(const p of parsed){
+    const pName=(p.name||'').toLowerCase().replace(/[^a-z0-9\/\-\s"]/g,'').replace(/\s+/g,' ').trim();
+    if(!pName||!p.qty||p.qty<=0) continue;
+
+    let best=null, bestScore=0;
+    for(const item of items){
+      const iName=item.desc.toLowerCase().replace(/[^a-z0-9\/\-\s"]/g,'').replace(/\s+/g,' ').trim();
+      const score=fuzzyMatch(pName,iName);
+      if(score>bestScore){bestScore=score;best=item;}
+    }
+
+    if(best && bestScore>=0.4){
+      const rel=itemRelQty(best.id);
+      const remaining=best.totalQty-rel;
+      matched.push({
+        itemId:best.id, itemDesc:best.desc, cat:best.cat,
+        qty:Math.min(p.qty, remaining>0?remaining:p.qty),
+        totalQty:best.totalQty, releasedQty:rel
+      });
+    }
+  }
+  return matched;
+}
+
+function fuzzyMatch(a,b){
+  if(a===b) return 1;
+  if(b.includes(a)||a.includes(b)) return 0.9;
+  const aWords=a.split(/\s+/), bWords=b.split(/\s+/);
+  let hits=0;
+  for(const w of aWords){ if(w.length>=2 && bWords.some(bw=>bw===w||bw.includes(w)||w.includes(bw))) hits++; }
+  return aWords.length?hits/aWords.length:0;
 }
 
 function closeModal(){document.getElementById('overlay').classList.remove('open');activeModal=null;}
