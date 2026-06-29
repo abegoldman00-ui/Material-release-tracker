@@ -1372,6 +1372,7 @@ function renderLog(){
     <td class="internal-col" data-label="Logged by" style="font-size:11px;color:var(--text3)">${br.logged_by_username?'<span style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">'+esc(br.logged_by_username)+'</span>':'—'}</td>
     <td class="mobile-actions internal-col">${can('release')?`<div style="display:flex;gap:3px">
       <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--blue)" onclick="openEditModal('${br.id}')">Edit</button>
+      <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--text2)" onclick="ackFromRelease('${br.id}')" title="Order acknowledgement">📄</button>
       <button class="btn" style="padding:0 5px;height:24px;font-size:11px;color:var(--red)" onclick="deleteRelease('${br.id}')">✕</button>
     </div>`:''}</td>
   </tr>`;
@@ -1401,6 +1402,7 @@ function renderLog(){
         <td class="internal-col" data-label="Logged by" style="font-size:11px;color:var(--text3)">${r.logged_by_username?'<span style="background:var(--blue-bg);color:var(--blue);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">'+esc(r.logged_by_username)+'</span>':'—'}</td>
         <td class="mobile-actions internal-col">${can('release')?`<div style="display:flex;gap:3px">
           <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--blue)" onclick="openEditModal('${r.id}')">Edit</button>
+          <button class="btn" style="padding:0 6px;height:24px;font-size:11px;color:var(--text2)" onclick="ackFromRelease('${r.id}')" title="Order acknowledgement">📄</button>
           <button class="btn" style="padding:0 5px;height:24px;font-size:11px;color:var(--red)" onclick="deleteRelease('${r.id}')">✕</button>
         </div>`:''}</td>
       </tr>`);
@@ -1419,9 +1421,10 @@ function renderLog(){
           <span style="font-size:11.5px;font-weight:700;color:var(--blue)">📦 ${label}</span>${pencil}
           <span style="font-size:11px;color:var(--text2)">${items.length} item${items.length!==1?'s':''} · ${totalQty.toLocaleString()} units${r0.release_date?' · '+r0.release_date:''}${(r0.supplier&&!isCustomer())?' · '+esc(r0.supplier):''}${r0.status?' · '+r0.status:''}</span>
           ${(r0.logged_by_username&&!isCustomer())?`<span style="background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">${esc(r0.logged_by_username)}</span>`:''}
-          ${(can('release')&&singleBulk)?`<div style="margin-left:auto;display:flex;gap:4px">
-            <button class="btn btn-blue" style="height:24px;padding:0 9px;font-size:11px" onclick="openEditBulk('${jsAttr(singleBulk)}')">Edit release</button>
-            <button class="btn" style="height:24px;padding:0 7px;font-size:11px;color:var(--red)" onclick="deleteBulk('${jsAttr(singleBulk)}')">🗑 Delete all</button>
+          ${can('release')?`<div style="margin-left:auto;display:flex;gap:4px">
+            <button class="btn" style="height:24px;padding:0 9px;font-size:11px;color:var(--text2)" onclick="ackFromGroup('${gid}')" title="Order acknowledgement">📄 Ack</button>
+            ${singleBulk?`<button class="btn btn-blue" style="height:24px;padding:0 9px;font-size:11px" onclick="openEditBulk('${jsAttr(singleBulk)}')">Edit release</button>
+            <button class="btn" style="height:24px;padding:0 7px;font-size:11px;color:var(--red)" onclick="deleteBulk('${jsAttr(singleBulk)}')">🗑 Delete all</button>`:''}
           </div>`:''}
         </div>
       </td>
@@ -2946,6 +2949,20 @@ function fuzzyMatch(a,b){
 }
 
 // ─── Order Acknowledgement PDF ───────────────────────────────────────────────
+function ackFromRelease(releaseId){
+  const r=releases.find(x=>x.id===releaseId);
+  if(!r) return;
+  generateOrderAck([{item_id:r.item_id,category:r.category,qty:parseInt(r.qty)||0,release_date:r.release_date,need_by:r.need_by,supplier:r.supplier,status:r.status,notes:r.notes,release_name:r.release_name}]);
+}
+
+function ackFromGroup(gid){
+  const g=logGroupMap[gid];
+  if(!g||!g.ids.length) return;
+  const items=g.ids.map(id=>releases.find(x=>x.id===id)).filter(Boolean);
+  if(!items.length) return;
+  generateOrderAck(items.map(r=>({item_id:r.item_id,category:r.category,qty:parseInt(r.qty)||0,release_date:r.release_date,need_by:r.need_by,supplier:r.supplier,status:r.status,notes:r.notes,release_name:r.release_name})));
+}
+
 function generateOrderAck(items){
   if(!items||!items.length) return;
   const job=jobs.find(j=>j.id===currentJobId);
