@@ -1786,8 +1786,6 @@ async function saveNewRelease(itemId,category){
     refreshAll();
     logActivity('release_logged',`logged ${qty.toLocaleString()}× ${itemId}`).then(loadActivity);
     toast('✓ Release logged');
-    const savedRow=Array.isArray(row)?row[0]:row;
-    generateOrderAck([{item_id:itemId,category,qty,release_date:base.release_date,need_by:base.need_by,supplier:base.supplier,status:base.status,notes:base.notes,release_name}]);
   }catch(e){alert('Save failed: '+e);}
   setBtnLoading('save-btn',false,'+ Log release');
 }
@@ -2692,6 +2690,8 @@ function addBulkItem(itemId){
   document.getElementById('br-search').value = '';
   document.getElementById('br-search-results').innerHTML = '';
   renderBulkItems();
+  const inputs=document.querySelectorAll('#br-items-tbody input[type=number]');
+  if(inputs.length) inputs[inputs.length-1].focus();
 }
 
 function renderBulkItems(){
@@ -2745,7 +2745,6 @@ async function submitBulkRelease(){
     refreshAll();
     logActivity('bulk_released',`released ${nItems} item${nItems!==1?'s':''} (${totalUnits.toLocaleString()} units)${supplier?' from '+supplier:''}`).then(loadActivity);
     toast(`✓ ${nItems} item${nItems!==1?'s':''} released`);
-    generateOrderAck(rows.map(r=>({item_id:r.item_id,category:r.category,qty:r.qty,release_date:date,need_by:needby,supplier,status,notes,release_name})));
   }catch(e){ alert('Failed to submit: '+e); }
   setBtnLoading('br-submit-btn',false,'📦 Submit release');
 }
