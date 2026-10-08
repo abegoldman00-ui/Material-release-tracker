@@ -450,6 +450,58 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
 .hero-bar{height:10px;background:rgba(255,255,255,.18);border-radius:99px;overflow:hidden}
 .hero-bar-fill{height:100%;background:linear-gradient(90deg,#fff,#ffe08a);border-radius:99px;transition:width .6s ease}
 .hero-units{font-size:12.5px;opacity:.85;margin-top:10px}
+/* ── Customer features: rep card, release requests ── */
+.hero-foot{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid rgba(255,255,255,.16);padding-top:14px;margin-top:2px}
+.hero-rep{display:flex;align-items:center;gap:11px;min-width:0}
+.hero-rep-ic{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hero-rep-ic .ic{width:18px;height:18px;stroke:#fff}
+.hero-rep-lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;opacity:.7;font-weight:600}
+.hero-rep-name{font-size:14px;font-weight:700;margin-top:1px}
+.hero-rep-links{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:2px}
+.hero-rep-links a{color:#fff;text-decoration:none;font-size:12.5px;opacity:.9;display:inline-flex;align-items:center;gap:5px}
+.hero-rep-links a:hover{opacity:1;text-decoration:underline}
+.hero-rep-links .ic{width:13px;height:13px;stroke:#ffe08a}
+.hero-req-btn{height:38px;padding:0 16px;border-radius:10px;border:none;background:var(--gold);color:#1a1300;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.hero-req-btn:hover{background:#ffc21a}
+.hero-req-btn .ic{width:15px;height:15px;stroke:#1a1300}
+#req-inbox-btn{position:relative}
+.req-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;font-size:10.5px;font-weight:700;background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.req-count.has{background:var(--gold);color:#1a1300;border-color:var(--gold)}
+.rq-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:1.6rem}
+.modal .rq-list,#modal-body .rq-list{grid-template-columns:1fr;margin-bottom:.6rem}
+.rq-card{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px 14px;box-shadow:var(--shadow-sm,0 1px 2px rgba(0,0,0,.04))}
+.rq-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.rq-title{font-weight:700;font-size:13.5px;min-width:0}
+.rq-title .muted{font-weight:500;color:var(--text2)}
+.rq-meta{font-size:11.5px;color:var(--text3);margin-top:3px}
+.rq-lines{list-style:none;margin:8px 0 0;padding:0}
+.rq-lines li{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:3px 0;border-top:1px dashed var(--border)}
+.rq-lines li span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rq-lines li.more{color:var(--text3);font-size:11px}
+.rq-tbl{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}
+.rq-tbl td{padding:4px 0;border-top:1px dashed var(--border)}
+.rq-note{font-size:12px;color:var(--text2);margin-top:8px;font-style:italic}
+.rq-reply{font-size:12px;margin-top:8px;background:var(--blue-bg);color:var(--blue);border-radius:8px;padding:6px 9px}
+.rq-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.rq-pill{font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 9px;white-space:nowrap;flex-shrink:0}
+.rq-open{background:var(--amber-bg);color:var(--amber)}
+.rq-done{background:var(--green-bg);color:var(--green)}
+.rq-declined{background:var(--red-bg);color:var(--red)}
+.rq-cancel{background:var(--surface2);color:var(--text3)}
+.rq-empty{font-size:12px;color:var(--text3);padding:.6rem .2rem}
+.rq-empty-card{border:1px dashed var(--border2);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--text2);margin-bottom:1.6rem}
+.rq-empty-card a{color:var(--blue);font-weight:600}
+.rq-fill-banner{background:var(--gold-bg,#fff7e0);border:1px solid #f5d77a;color:#6b4e00;border-radius:9px;padding:.6rem .8rem;font-size:12.5px;margin-bottom:.9rem}
+.rep-box{margin-top:.5rem;padding:.5rem .6rem;border-radius:8px;background:var(--surface2);border:1px solid var(--border);font-size:11.5px}
+.rep-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rep-line .lbl{font-weight:700;color:var(--text2);text-transform:uppercase;font-size:10px;letter-spacing:.05em}
+.rep-form .form-grid{gap:6px}
+.rep-form input,.rep-form select{height:28px;font-size:12px}
+.report-quick{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--blue-border);background:var(--blue-bg);border-radius:12px;padding:12px 14px;cursor:pointer;color:var(--text);margin-bottom:1rem}
+.report-quick:hover{border-color:var(--blue)}
+.report-quick .ic{width:26px;height:26px;stroke:var(--blue);flex-shrink:0}
+.report-quick b{display:block;font-size:13.5px;color:var(--blue)}
+.report-quick span{font-size:12px;color:var(--text2)}
 </style>
 </head>
 <body>
@@ -536,6 +588,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
   <div class="sidebar-footer">
     <button class="sidebar-btn primary" id="new-job-btn" onclick="openNewJobModal()"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New job</button>
     <button class="sidebar-btn" id="bulk-release-btn" onclick="openBulkRelease()" disabled><svg class="ic" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg> Bulk release</button>
+    <button class="sidebar-btn primary" id="request-btn" onclick="openRequestModal()" style="display:none" disabled><svg class="ic" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg> Request a release</button>
     <button class="sidebar-btn" onclick="exportExcel()" id="export-btn" disabled><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></svg> Export Excel</button>
     <button class="sidebar-btn" onclick="openReportModal()" id="export-pdf-btn" disabled><svg class="ic" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg> PDF report</button>
   </div>
@@ -558,6 +611,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
           <span class="sync-dot" id="sync-dot"></span>
           <span class="sync-label" id="sync-label">Connecting...</span>
         </div>
+        <button class="btn" id="req-inbox-btn" onclick="openRequestsInbox()" style="display:none" title="Customer release requests"><svg class="ic" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="btn-label">Requests</span><span class="req-count" id="req-count">0</span></button>
         <button class="btn" id="admin-btn" onclick="openAdminPanel()" style="display:none"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="btn-label">Admin</span></button>
         <div class="user-badge" id="user-badge" style="display:none">
           <div class="user-avatar" id="user-avatar">?</div>
@@ -592,6 +646,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
       <div id="tab-dashboard" class="tab-content active">
         <div class="cust-portal-hero" id="cust-hero"></div>
         <div class="summary-grid" id="summary-cards"></div>
+        <div id="my-requests"></div>
         <div class="section-title">Progress by category</div>
         <div class="cat-grid" id="cat-cards"></div>
         <div id="co-summary"></div>
@@ -940,6 +995,7 @@ async function loadAll(){
     if(jobs.length>0 && !currentJobId) await selectJob(jobs[0].id);
 
     startRealtime(); // begin instant updates (idempotent)
+    loadRequests();   // release requests (badge for staff, list for customers)
 
   }catch(e){
     setSyncStatus('err','Connection error');
@@ -982,6 +1038,8 @@ async function selectJob(jobId){
   populateCatFilters();
   refreshAll();
   loadActivity();
+  applyRequestUi();
+  if(isCustomer()){ _myReqs=[]; renderMyRequests(); loadRequests(); if(_myRep===undefined) loadMyRep().then(()=>{ if(currentJobId===jobId) renderSummary(); }); }
   if(window.innerWidth<768) closeSidebar(); // auto-close drawer on mobile
 }
 
@@ -1060,6 +1118,7 @@ async function pollTick(){
       }
     }catch(e){setSyncStatus('err','Sync error');}
   }
+  if(currentUser) loadRequests().catch(()=>{});
   const realtimeFresh = (Date.now()-_rtLastEvent) < 90000;   // got a live event in last 90s
   setTimeout(pollTick, realtimeFresh ? 60000 : 15000);
 }
@@ -1276,7 +1335,11 @@ function renderCustomerHero(job, pct, rel, total){
       <div class="hero-pct-row"><div class="hero-pct">${pct}%</div><div class="hero-pct-label">complete</div></div>
       <div class="hero-bar"><div class="hero-bar-fill" style="width:${pct}%"></div></div>
       <div class="hero-units">${rel.toLocaleString()} of ${total.toLocaleString()} units released</div>
-    </div>`;
+    </div>
+    ${(_myRep||_reqAvail)?`<div class="hero-foot">
+      ${repHeroHtml(_myRep)||'<div></div>'}
+      ${_reqAvail?`<button class="hero-req-btn" onclick="openRequestModal()"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Request a release</button>`:''}
+    </div>`:''}`;
 }
 
 // Original BOM vs Change Orders panel (only shown when the job has change-order items)
@@ -1362,7 +1425,7 @@ function renderDetail(){
         <td data-label="Remaining" style="font-weight:600;color:${remaining<0?'var(--red)':remaining===0?'var(--green)':'var(--text)'}">${remaining.toLocaleString()}</td>
         <td data-label="Progress"><div style="display:inline-block;width:48px;height:4px;background:var(--surface2);border-radius:99px;overflow:hidden;vertical-align:middle"><div style="height:100%;width:${pct}%;background:var(--blue);border-radius:99px"></div></div>&nbsp;<span style="font-size:10px;color:var(--text3)">${pct}%</span></td>
         <td data-label="Status">${badge(itemStatus(item))}</td><td data-label="Need by" style="color:var(--text3)">${esc(lastNeedBy)}</td>
-        <td class="mobile-actions"><div style="display:flex;gap:3px;justify-content:flex-end">${canEditQty?`<button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openQtyChange('${item.dbId}')" title="Change quantity (change order)">✎ Qty</button>`:''}<button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openModal('${jsAttr(item.id)}')" title="Releases">&#9776;</button></div></td>
+        <td class="mobile-actions"><div style="display:flex;gap:3px;justify-content:flex-end">${canEditQty?`<button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openQtyChange('${item.dbId}')" title="Change quantity (change order)">✎ Qty</button>`:''}${(isCustomer()&&_reqAvail)?`<button class="btn btn-blue" style="padding:0 8px;height:24px;font-size:11px" onclick="openRequestModal('${jsAttr(item.id)}')" title="Request a release of this item">Request</button>`:''}<button class="btn" style="padding:0 7px;height:24px;font-size:11px" onclick="openModal('${jsAttr(item.id)}')" title="Releases">&#9776;</button></div></td>
       </tr>`;
     }).join('');
   const pag=document.getElementById('detail-pag');
@@ -2709,6 +2772,7 @@ function openBulkRelease(){
   if(!can('release')){ toast('You do not have permission to release material.'); return; }
   if(!currentJobId){ alert('Select a job first.'); return; }
   bulkItems = [];
+  _fulfillGroup = null;
   activeModal = {type:'bulk'};
   document.getElementById('modal-title').textContent = '📦 Bulk release — delivery manifest';
   document.getElementById('modal-body').innerHTML = `
@@ -2847,6 +2911,7 @@ async function submitBulkRelease(){
     refreshAll();
     logActivity('bulk_released',`released ${nItems} item${nItems!==1?'s':''} (${totalUnits.toLocaleString()} units)${supplier?' from '+supplier:''}`).then(loadActivity);
     toast(`✓ ${nItems} item${nItems!==1?'s':''} released`);
+    if(_fulfillGroup){ const g=_fulfillGroup; _fulfillGroup=null; markFulfilled(g); }
   }catch(e){ alert('Failed to submit: '+e); }
   setBtnLoading('br-submit-btn',false,'📦 Submit release');
 }
@@ -3166,7 +3231,237 @@ function refreshAll(){
 }
 
 // ─── Excel export ─────────────────────────────────────────────────────────────
-function exportExcel(){
+// ─── Excel export (styled, via ExcelJS — loaded on first use) ────────────────
+// Falls back to the original plain export if the styling library can't load.
+let _exceljsP=null;
+function loadExcelJS(){
+  if(window.ExcelJS) return Promise.resolve(window.ExcelJS);
+  if(_exceljsP) return _exceljsP;
+  const srcs=['https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js','https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js'];
+  _exceljsP=new Promise((res,rej)=>{
+    let i=0;
+    const next=()=>{
+      if(i>=srcs.length){ _exceljsP=null; rej(new Error('ExcelJS could not load')); return; }
+      const s=document.createElement('script'); s.src=srcs[i++];
+      s.onload=()=>window.ExcelJS?res(window.ExcelJS):next(); s.onerror=next;
+      document.head.appendChild(s);
+    };
+    next();
+  });
+  return _exceljsP;
+}
+async function exportExcel(){
+  if(!currentJobId)return;
+  const btn=document.getElementById('export-btn'); if(btn) btn.disabled=true;
+  try{
+    let X=null; try{ X=await loadExcelJS(); }catch(e){ console.warn('Styled Excel unavailable, using plain export', e); }
+    if(X){ try{ await exportExcelStyled(X); return; }catch(e){ console.error('Styled Excel failed, using plain export', e); } }
+    exportExcelPlain();
+  } finally { if(btn) btn.disabled=!currentJobId; }
+}
+async function exportExcelStyled(ExcelJS){
+  const job=jobs.find(j=>j.id===currentJobId);
+  const jobName=job?job.name:'Job';
+  const customer=job&&job.customer?job.customer:'';
+  const items=currentItems();
+  const cats=currentCats();
+  const cust=isCustomer();
+  const rep=await repForJob(currentJobId).catch(()=>null);
+  const releasable=items.filter(isReleasable);
+  const grandTotal=bomTotal(items);
+  const grandRel=releasable.reduce((s,i)=>s+itemRelQty(i.id),0);
+  const started=releasable.filter(i=>itemStatus(i)!=='Pending').length;
+  const fullRel=releasable.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length;
+
+  const NAVY='FF0E1A2E', BLUE='FF1C56A5', GOLD='FFF5B301', ZEBRA='FFF7F9FC', LINE='FFE3E8EF', MUTED='FF6B7280', INK='FF141B26';
+  const ST_BG={Pending:'FFEEF1F6',Partial:'FFFFF4D6',Released:'FFE8F0FA',Delivered:'FFE6F4EA',Installed:'FFE3EFE7'};
+  const ST_FG={Pending:'FF5B6474',Partial:'FF8A5C00',Released:'FF1C56A5',Delivered:'FF1F7A43',Installed:'FF14532D'};
+  const solid=a=>({type:'pattern',pattern:'solid',fgColor:{argb:a}});
+  const FONT='Calibri';
+  const wb=new ExcelJS.Workbook();
+  wb.creator='ULE Group · ULETrack'; wb.created=new Date();
+
+  const newSheet=(name, widths, landscape)=>{
+    const ws=wb.addWorksheet(name,{
+      views:[{showGridLines:false}],
+      pageSetup:{orientation:landscape?'landscape':'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.4,right:.4,top:.5,bottom:.6,header:.2,footer:.3}},
+      headerFooter:{oddFooter:`&L&8${((customer?customer+' · ':'')+jobName).replace(/&/g,'&&')}&R&8Page &P of &N`}
+    });
+    ws.columns=widths.map(w=>({width:w}));
+    return ws;
+  };
+  const banner=(ws, ncols, subtitle)=>{
+    ws.mergeCells(1,1,1,ncols);
+    const a=ws.getCell(1,1); a.value='ULE GROUP   ·   ULETrack';
+    a.font={name:FONT,bold:true,size:15,color:{argb:'FFFFFFFF'}}; a.fill=solid(NAVY); a.alignment={vertical:'middle',indent:1};
+    ws.getRow(1).height=30;
+    ws.mergeCells(2,1,2,ncols);
+    const b=ws.getCell(2,1); b.value=`${jobName}${customer?'  ·  '+customer:''}  —  ${subtitle}`;
+    b.font={name:FONT,bold:true,size:11,color:{argb:NAVY}}; b.alignment={vertical:'middle',indent:1};
+    b.border={bottom:{style:'medium',color:{argb:GOLD}}};
+    ws.getRow(2).height=22;
+    for(let c=2;c<=ncols;c++) ws.getCell(2,c).border={bottom:{style:'medium',color:{argb:GOLD}}};
+  };
+  const headerRow=(ws, r, labels, numericCols)=>{
+    const row=ws.getRow(r);
+    labels.forEach((l,i)=>{ const c=row.getCell(i+1); c.value=l;
+      c.font={name:FONT,bold:true,size:10,color:{argb:'FFFFFFFF'}}; c.fill=solid(BLUE);
+      c.alignment={vertical:'middle',horizontal:numericCols.includes(i+1)?'right':'left',wrapText:true,indent:numericCols.includes(i+1)?0:1}; });
+    row.height=24;
+  };
+  const bodyCell=(c, opts)=>{
+    c.font={name:FONT,size:10,color:{argb:INK},...(opts&&opts.font||{})};
+    c.border={bottom:{style:'thin',color:{argb:LINE}}};
+    if(opts&&opts.zebra) c.fill=solid(ZEBRA);
+    if(opts&&opts.fmt) c.numFmt=opts.fmt;
+    c.alignment={vertical:'middle',...(opts&&opts.align||{}),indent:(opts&&opts.align&&opts.align.horizontal==='right')?0:1};
+  };
+  const statusCell=(c, s)=>{
+    if(ST_BG[s]){ c.fill=solid(ST_BG[s]); c.font={name:FONT,size:10,bold:true,color:{argb:ST_FG[s]}}; }
+    c.alignment={vertical:'middle',horizontal:'center'};
+  };
+  const dataBar=(ws, ref)=>{
+    ws.addConditionalFormatting({ref, rules:[{type:'dataBar',priority:1,gradient:false,minLength:0,maxLength:100,
+      cfvo:[{type:'num',value:0},{type:'num',value:1}],color:{argb:'FF7FA6DD'}}]});
+  };
+
+  // ── Summary ──
+  const s1=newSheet('Summary',[38,13,16,14,14,13,15,15,15],true);
+  banner(s1,9,'Material Release Summary');
+  let r=4;
+  const info=(label,val)=>{
+    const a=s1.getCell(r,1); a.value=label; a.font={name:FONT,bold:true,size:10,color:{argb:MUTED}}; a.alignment={indent:1};
+    s1.mergeCells(r,2,r,9); const b=s1.getCell(r,2); b.value=val; b.font={name:FONT,size:10.5,color:{argb:INK}};
+    r++;
+  };
+  info('Job', jobName);
+  if(customer) info('Customer', customer);
+  info('Report date', localISODate());
+  info('Prepared by', (currentUser?currentUser.username+' · ':'')+'ULE Group');
+  if(rep) info('Your ULE Group contact', [rep.name,rep.phone,rep.email].filter(Boolean).join('   ·   '));
+  r++;
+  // KPI tiles
+  const kpis=[['Overall released',grandTotal>0?grandRel/grandTotal:0,'0%'],['Units released',grandRel,'#,##0'],['BOM units',grandTotal,'#,##0'],
+              ['Remaining',Math.max(0,grandTotal-grandRel),'#,##0'],['Items started',`${started} of ${releasable.length}`,null],['Fully released',`${fullRel} of ${releasable.length}`,null]];
+  const kSpan=[[1,1],[2,3],[4,5],[6,6],[7,8],[9,9]];
+  kpis.forEach((k,i)=>{
+    const [c1,c2]=kSpan[i];
+    if(c2>c1){ s1.mergeCells(r,c1,r,c2); s1.mergeCells(r+1,c1,r+1,c2); }
+    const l=s1.getCell(r,c1); l.value=k[0].toUpperCase(); l.font={name:FONT,bold:true,size:8.5,color:{argb:MUTED}};
+    const v=s1.getCell(r+1,c1); v.value=k[1]; v.font={name:FONT,bold:true,size:18,color:{argb:i===0?BLUE:NAVY}}; if(k[2]) v.numFmt=k[2];
+    for(let c=c1;c<=c2;c++){ for(const rr of [r,r+1]){ const cell=s1.getCell(rr,c); cell.fill=solid('FFF3F6FB');
+      cell.alignment={vertical:'middle',horizontal:'left',indent:1};
+      cell.border={left:c===c1?{style:'thin',color:{argb:'FFFFFFFF'}}:undefined,right:c===c2?{style:'medium',color:{argb:'FFFFFFFF'}}:undefined}; } }
+  });
+  s1.getRow(r).height=18; s1.getRow(r+1).height=30;
+  r+=3;
+  // Category table
+  const catHdr=r;
+  headerRow(s1,r,['Category','Total Items','Revised BOM Qty','Released Qty','Remaining','% Released','Items Started','Fully Released','Pending'],[2,3,4,5,6,7,8,9]);
+  r++;
+  const firstCat=r;
+  cats.forEach((cat,idx)=>{
+    const ci=items.filter(i=>i.cat===cat), cir=ci.filter(isReleasable);
+    const t=bomTotal(ci), rq=cir.reduce((s,i)=>s+itemRelQty(i.id),0);
+    const vals=[cat,cir.length,t,rq,t-rq,t>0?rq/t:0,cir.filter(i=>itemStatus(i)!=='Pending').length,
+      cir.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length,cir.filter(i=>itemStatus(i)==='Pending').length];
+    vals.forEach((v,j)=>{ const c=s1.getCell(r,j+1); c.value=v;
+      bodyCell(c,{zebra:idx%2===1,fmt:j===5?'0%':(j>0?'#,##0':null),align:{horizontal:j>0?'right':'left'}}); });
+    r++;
+  });
+  const lastCat=r-1;
+  // totals
+  const tot=['Total',releasable.length,grandTotal,grandRel,grandTotal-grandRel,grandTotal>0?grandRel/grandTotal:0,started,fullRel,releasable.filter(i=>itemStatus(i)==='Pending').length];
+  tot.forEach((v,j)=>{ const c=s1.getCell(r,j+1); c.value=v; c.font={name:FONT,bold:true,size:10.5,color:{argb:NAVY}};
+    c.fill=solid('FFF3F6FB'); c.border={top:{style:'medium',color:{argb:NAVY}}}; if(j===5) c.numFmt='0%'; else if(j>0) c.numFmt='#,##0';
+    c.alignment={vertical:'middle',horizontal:j>0?'right':'left',indent:j>0?0:1}; });
+  s1.getRow(r).height=20;
+  if(lastCat>=firstCat) dataBar(s1,`F${firstCat}:F${lastCat}`);
+  r+=2;
+  // Scope summary (original vs change orders) — internal only
+  if(!cust){
+    const scope=[['Original BOM',originalBomTotal(items)],
+      ['Adders',items.filter(i=>i.co==='adder').reduce((s,i)=>s+i.totalQty,0)],
+      ['Deducts',-items.filter(i=>i.co==='deduct').reduce((s,i)=>s+i.totalQty,0)],
+      ['Qty changes',items.filter(i=>i.co==='qty_change').reduce((s,i)=>s+(i.totalQty-(i.origQty||0)),0)],
+      ['Revised total',bomTotal(items)]];
+    headerRow(s1,r,['Scope (internal)','Units'],[2]); r++;
+    scope.forEach((row,idx)=>{ const a=s1.getCell(r,1), b=s1.getCell(r,2); a.value=row[0]; b.value=row[1];
+      const last=idx===scope.length-1;
+      bodyCell(a,{font:last?{bold:true}:{}}); bodyCell(b,{fmt:'#,##0',align:{horizontal:'right'},font:last?{bold:true}:{}}); r++; });
+    r++;
+  }
+  const f=s1.getCell(r,1); f.value='Generated by ULETrack · uletrack.com'; f.font={name:FONT,italic:true,size:9,color:{argb:MUTED}};
+  s1.pageSetup.printTitlesRow=`${catHdr}:${catHdr}`;
+
+  // ── All Line Items ──
+  const hdr2 = cust
+    ? ['Description','Category','BOM Qty','Released','Remaining','% Released','Status']
+    : ['Description','Category','BOM Qty','Change Order','CO Type','Original Qty','Total Released','Remaining','% Released','Status'];
+  const w2 = cust ? [52,26,12,12,12,12,13] : [52,26,11,15,12,12,14,12,12,13];
+  const s2=newSheet('All Line Items',w2,true);
+  banner(s2,hdr2.length,'All Line Items');
+  const num2 = cust ? [3,4,5,6] : [3,6,7,8,9];
+  headerRow(s2,3,hdr2,num2);
+  let rr=4;
+  items.forEach((item,idx)=>{
+    const rel=isReleasable(item)?itemRelQty(item.id):0;
+    const qtyv=(item.co==='deduct'?-item.totalQty:item.totalQty);
+    const pctv=(isReleasable(item)&&item.totalQty>0)?rel/item.totalQty:null;
+    const stat=isReleasable(item)?itemStatus(item):'—';
+    const vals = cust
+      ? [item.desc,item.cat,qtyv,rel,item.totalQty-rel,pctv,stat]
+      : [item.desc,item.cat,qtyv,item.coLabel||'',coTypeLabel(item.co)||'',(item.origQty!=null?item.origQty:''),rel,item.totalQty-rel,pctv,stat];
+    const pctCol = cust?6:9, stCol=vals.length;
+    vals.forEach((v,j)=>{ const c=s2.getCell(rr,j+1); c.value=(v===null?'':v);
+      const isNum=num2.includes(j+1);
+      bodyCell(c,{zebra:idx%2===1,fmt:(j+1)===pctCol?'0%':(isNum?'#,##0':null),align:{horizontal:isNum?'right':'left'},
+        font:(j===2&&qtyv<0)?{color:{argb:'FFB42318'}}:{}});
+      if(j+1===stCol) statusCell(c,v);
+    });
+    rr++;
+  });
+  if(items.length){
+    const pc = cust?'F':'I';
+    dataBar(s2,`${pc}4:${pc}${rr-1}`);
+    s2.autoFilter={from:{row:3,column:1},to:{row:rr-1,column:hdr2.length}};
+  }
+  s2.views=[{state:'frozen',ySplit:3,xSplit:1,showGridLines:false}];
+  s2.pageSetup.printTitlesRow='3:3';
+
+  // ── Release Log ── (most recent first)
+  const hdr3 = cust
+    ? ['Release','Item','Category','Qty Released','Release Date','Status']
+    : ['Release','Item','Category','Qty Released','Release Date','Need-By','Supplier','Status','Notes','Logged By'];
+  const w3 = cust ? [24,48,24,13,14,13] : [22,46,22,12,13,13,18,13,30,14];
+  const s3=newSheet('Release Log',w3,true);
+  banner(s3,hdr3.length,'Release Log');
+  headerRow(s3,3,hdr3,[4]);
+  const relSorted=[...releases].sort((a,b)=>String(b.release_date||'').localeCompare(String(a.release_date||''))||String(b.created_at||'').localeCompare(String(a.created_at||'')));
+  let r3=4;
+  relSorted.forEach((x,idx)=>{
+    const vals = cust
+      ? [x.release_name||'',x.item_id,x.category||'',parseInt(x.qty)||0,x.release_date||'',x.status||'']
+      : [x.release_name||'',x.item_id,x.category||'',parseInt(x.qty)||0,x.release_date||'',x.need_by||'',x.supplier||'',x.status||'',x.notes||'',x.logged_by_username||''];
+    const stCol = cust?6:8;
+    vals.forEach((v,j)=>{ const c=s3.getCell(r3,j+1); c.value=v;
+      bodyCell(c,{zebra:idx%2===1,fmt:j===3?'#,##0':null,align:{horizontal:j===3?'right':'left',wrapText:(!cust&&j===8)}});
+      if(j+1===stCol) statusCell(c,v);
+    });
+    r3++;
+  });
+  if(relSorted.length) s3.autoFilter={from:{row:3,column:1},to:{row:r3-1,column:hdr3.length}};
+  else { const c=s3.getCell(4,1); c.value='No releases logged yet.'; c.font={name:FONT,italic:true,size:10,color:{argb:MUTED}}; }
+  s3.views=[{state:'frozen',ySplit:3,showGridLines:false}];
+  s3.pageSetup.printTitlesRow='3:3';
+
+  const buf=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=reportFileBase(job)+'.xlsx';
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500);
+}
+
+function exportExcelPlain(){
   if(!currentJobId)return;
   const job=jobs.find(j=>j.id===currentJobId);
   const jobName=job?job.name:'Job';
@@ -3225,7 +3520,7 @@ function exportExcel(){
     ? [r.release_name||'',r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.status||'']
     : [r.release_name||'',r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.need_by||'',r.supplier||'',r.status||'',r.notes||'',r.logged_by_username||'']);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows3),'Release Log');
-  XLSX.writeFile(wb,'ULETrack_'+jobName.replace(/[^a-z0-9]/gi,'_')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  XLSX.writeFile(wb,reportFileBase(job)+'.xlsx');
 }
 
 // ─── PDF report (print-ready) ─────────────────────────────────────────────────
@@ -3236,10 +3531,14 @@ function openReportModal(){
   const cust=isCustomer();
   const hasCO=currentItems().some(i=>i.co);
   activeModal={type:'report'};
-  document.getElementById('modal-title').textContent='📄 Build PDF report';
+  document.getElementById('modal-title').textContent='PDF report';
   const opt=(id,label,checked,hint)=>`<label style="display:flex;gap:10px;align-items:flex-start;padding:9px 2px;cursor:pointer;border-bottom:1px solid var(--border)"><input type="checkbox" id="${id}" ${checked?'checked':''} style="margin-top:2px;width:16px;height:16px;flex-shrink:0;accent-color:var(--blue)"><span><span style="font-size:13px;font-weight:500;color:var(--text)">${label}</span>${hint?`<br><span style="font-size:11px;color:var(--text3)">${hint}</span>`:''}</span></label>`;
   document.getElementById('modal-body').innerHTML=`
-    <p style="font-size:12px;color:var(--text2);margin-bottom:.7rem">Choose what to include in the report for <strong>${esc(job.name)}</strong>${job.customer?' · '+esc(job.customer):''}.</p>
+    <button class="report-quick" onclick="closeModal();exportPdf({mode:'snapshot'})">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 17v-3M12 17v-5M15 17v-2"/></svg>
+      <div><b>1-page job snapshot</b><span>Progress, status, categories and recent releases on a single page — quick to send.</span></div>
+    </button>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:.7rem">Or build a full report for <strong>${esc(job.name)}</strong>${job.customer?' · '+esc(job.customer):''}:</p>
     <div class="sec-label">Sections</div>
     ${opt('rep-kpis','Overview & progress',true,'Overall % complete, units released, item counts')}
     ${opt('rep-status','Status breakdown',true,'How many items are pending / partial / released / delivered / installed')}
@@ -3256,13 +3555,14 @@ function openReportModal(){
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-blue" onclick="generateReport()">Generate PDF</button>
+      <button class="btn btn-blue" onclick="generateReport()">Generate full report</button>
     </div>`;
   document.getElementById('overlay').classList.add('open');
 }
 function generateReport(){
   const chk=id=>{const e=document.getElementById(id);return e?e.checked:false;};
   const opts={
+    mode:'full',
     kpis:chk('rep-kpis'), status:chk('rep-status'), categories:chk('rep-categories'),
     items:chk('rep-items'), log:chk('rep-log'), co:chk('rep-co'),
     internal: chk('rep-internal') && !isCustomer(),
@@ -3274,15 +3574,46 @@ function generateReport(){
   exportPdf(opts);
 }
 
+// ─── PDF reports (full report + 1-page snapshot) ─────────────────────────────
+// Opens a print-ready page; "Save as PDF" uses the "customer - job - date" title.
+function pdfDonut(pct, size){
+  const p=Math.max(0,Math.min(100,pct)), r=42, c=2*Math.PI*r, off=c*(1-p/100);
+  return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" aria-label="${p}% released">
+    <circle cx="50" cy="50" r="${r}" fill="none" stroke="#e6ebf2" stroke-width="11"/>
+    ${p>0?`<circle cx="50" cy="50" r="${r}" fill="none" stroke="#1c56a5" stroke-width="11" stroke-linecap="${p>=100?'butt':'round'}" stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 50 50)"/>`:''}
+    <text x="50" y="52" text-anchor="middle" font-size="21" font-weight="800" fill="#0e1a2e" font-family="Inter,Arial,sans-serif">${pct}%</text>
+    <text x="50" y="66" text-anchor="middle" font-size="7.5" font-weight="600" fill="#6b7280" letter-spacing=".6" font-family="Inter,Arial,sans-serif">RELEASED</text>
+  </svg>`;
+}
+const PDF_STATUS_ORDER=['Pending','Partial','Released','Delivered','Installed'];
+const PDF_STATUS_COLOR={Pending:'#cfd6e2',Partial:'#f5b301',Released:'#1c56a5',Delivered:'#2d8a4e',Installed:'#14532d'};
+const PDF_STATUS_TEXT={Pending:'#5b6474',Partial:'#8a5c00',Released:'#1c56a5',Delivered:'#1f7a43',Installed:'#14532d'};
+const PDF_STATUS_BG={Pending:'#eef1f6',Partial:'#fff4d6',Released:'#e8f0fa',Delivered:'#e6f4ea',Installed:'#e3efe7'};
+function pdfStatusTag(s){ const k=PDF_STATUS_BG[s]?s:'Released'; return `<span class="st" style="background:${PDF_STATUS_BG[k]};color:${PDF_STATUS_TEXT[k]}">${esc(s||'Released')}</span>`; }
+function pdfCssStr(s){ return String(s||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/[\r\n]+/g,' '); }
+
 function exportPdf(opts){
   if(!currentJobId)return;
   opts=opts||{kpis:1,status:1,categories:1,log:1};
+  const snapshot=opts.mode==='snapshot';
+  // Open the window right away (inside the click) so pop-up blockers allow it
+  const win=window.open('','_blank');
+  if(!win){ alert('Please allow pop-ups to export the PDF report.'); return; }
+  try{ win.document.write('<!doctype html><title>Preparing report…</title><body style="font-family:Arial,sans-serif;color:#555;padding:40px">Preparing report…</body>'); win.document.close(); }catch(e){}
+  const jobId=currentJobId;
+  repForJob(jobId).catch(()=>null).then(rep=>{
+    if(currentJobId!==jobId) return;
+    const html=buildPdfHtml(opts, snapshot, rep);
+    try{ win.document.open(); win.document.write(html); win.document.close(); }catch(e){ console.error(e); }
+  });
+}
+
+function buildPdfHtml(opts, snapshot, rep){
   const job=jobs.find(j=>j.id===currentJobId);
   const jobName=job?job.name:'Job';
   const customer=job&&job.customer?job.customer:'';
-  const custColor=customer?customerColor(customer):'#1a5fa8';
   const cust=isCustomer();
-  const internal=opts.internal && !cust;
+  const internal=opts.internal && !cust && !snapshot;
   const items=currentItems();
   const releasable=items.filter(isReleasable);
   const cats=currentCats();
@@ -3292,85 +3623,18 @@ function exportPdf(opts){
   const pct=totalQty>0?Math.round(relQtyTotal/totalQty*100):0;
   const started=releasable.filter(i=>itemStatus(i)!=='Pending').length;
   const fullRel=releasable.filter(i=>['Released','Delivered','Installed'].includes(itemStatus(i))).length;
-  const pending=releasable.length-started;
   const logo=(document.querySelector('.sidebar-logo img')||{}).src||'';
-  const now=new Date().toLocaleString();
   const by=currentUser?currentUser.username:'';
-
-  // status breakdown
+  const dateLong=new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
+  const fileTitle=reportFileBase(job);
   const sc={Pending:0,Partial:0,Released:0,Delivered:0,Installed:0};
   releasable.forEach(i=>{ const s=itemStatus(i); if(sc[s]!=null) sc[s]++; });
-  const statusColor={Pending:'#8a5c00',Partial:'#8a2060',Released:'#1a5fa8',Delivered:'#2d7a3a',Installed:'#1a6e3a'};
-  const statusBg={Pending:'#fdf3df',Partial:'#fce8f3',Released:'#e8f0f9',Delivered:'#e7f4e9',Installed:'#e8f5ee'};
+  const nRel=releasable.length||0;
 
-  // ── sections ──
-  let body='';
-
-  if(opts.kpis){
-    body+=`<div class="kpis">
-      <div class="kpi accent"><div class="lbl">Overall released</div><div class="val">${pct}%</div><div class="sub">${relQtyTotal.toLocaleString()} of ${totalQty.toLocaleString()} units</div>
-        <div class="pbar big"><div class="pfill" style="width:${pct}%"></div></div></div>
-      <div class="kpi"><div class="lbl">Items started</div><div class="val">${started}<span class="of"> / ${releasable.length}</span></div></div>
-      <div class="kpi"><div class="lbl">Fully released</div><div class="val">${fullRel}</div></div>
-      <div class="kpi"><div class="lbl">Remaining</div><div class="val">${remainingTotal.toLocaleString()}</div><div class="sub">units to release</div></div>
-    </div>`;
-  }
-
-  if(opts.status){
-    const order=['Pending','Partial','Released','Delivered','Installed'];
-    body+=`<h2>Status breakdown</h2><div class="pills">`+
-      order.map(s=>`<div class="pill" style="background:${statusBg[s]};color:${statusColor[s]};border-color:${statusColor[s]}33"><span class="pill-n">${sc[s]}</span> ${s}</div>`).join('')+
-      `</div>`;
-  }
-
-  if(opts.categories){
-    const catRows=cats.map(cat=>{
-      const ci=items.filter(i=>i.cat===cat), cir=ci.filter(isReleasable);
-      const t=bomTotal(ci), r=cir.reduce((s,i)=>s+itemRelQty(i.id),0), p=t>0?Math.round(r/t*100):0;
-      return `<tr><td>${esc(cat)}</td><td class="num">${cir.length}</td><td class="num">${t.toLocaleString()}</td><td class="num">${r.toLocaleString()}</td><td class="num">${(t-r).toLocaleString()}</td><td class="num"><div class="pbar"><div class="pfill" style="width:${p}%"></div></div>${p}%</td></tr>`;
-    }).join('');
-    body+=`<h2>Category breakdown</h2><table>
-      <thead><tr><th>Category</th><th class="num">Items</th><th class="num">BOM qty</th><th class="num">Released</th><th class="num">Remaining</th><th class="num">Progress</th></tr></thead>
-      <tbody>${catRows}</tbody>
-      <tfoot><tr><td>Total</td><td class="num">${releasable.length}</td><td class="num">${totalQty.toLocaleString()}</td><td class="num">${relQtyTotal.toLocaleString()}</td><td class="num">${remainingTotal.toLocaleString()}</td><td class="num">${pct}%</td></tr></tfoot>
-    </table>`;
-  }
-
-  if(opts.co && !cust){
-    const adders=items.filter(i=>i.co==='adder').reduce((s,i)=>s+i.totalQty,0);
-    const deducts=items.filter(i=>i.co==='deduct').reduce((s,i)=>s+i.totalQty,0);
-    const qd=items.filter(i=>i.co==='qty_change').reduce((s,i)=>s+(i.totalQty-(i.origQty||0)),0);
-    if(adders||deducts||qd){
-      body+=`<h2>Change-order scope</h2><table><tbody>
-        <tr><td>Original BOM</td><td class="num">${originalBomTotal(items).toLocaleString()}</td></tr>
-        <tr><td>Adders</td><td class="num">+${adders.toLocaleString()}</td></tr>
-        <tr><td>Deducts</td><td class="num">−${deducts.toLocaleString()}</td></tr>
-        <tr><td>Qty changes</td><td class="num">${qd>=0?'+':''}${qd.toLocaleString()}</td></tr>
-        <tr style="font-weight:700"><td>Revised total</td><td class="num">${totalQty.toLocaleString()}</td></tr>
-      </tbody></table>`;
-    }
-  }
-
-  if(opts.items){
-    const rows=items.map(i=>{
-      const rel=isReleasable(i)?itemRelQty(i.id):0;
-      const qd=(i.co==='deduct'?-i.totalQty:i.totalQty);
-      const p=(isReleasable(i)&&i.totalQty>0)?Math.round(rel/i.totalQty*100):0;
-      const coTag=i.co?` <span class="tag">${esc((i.coLabel?i.coLabel+' ':'')+coTypeLabel(i.co))}</span>`:'';
-      return `<tr><td>${esc(i.desc)}${coTag}</td><td>${esc((i.cat||'').split(' ')[0])}</td><td class="num">${qd.toLocaleString()}</td><td class="num">${isReleasable(i)?rel.toLocaleString():'—'}</td><td class="num">${isReleasable(i)?(i.totalQty-rel).toLocaleString():'—'}</td><td class="num">${isReleasable(i)?p+'%':'—'}</td><td>${isReleasable(i)?itemStatus(i):'Deduct'}</td></tr>`;
-    }).join('');
-    body+=`<h2>All items (${items.length})</h2><table>
-      <thead><tr><th>Description</th><th>Category</th><th class="num">BOM</th><th class="num">Released</th><th class="num">Remaining</th><th class="num">%</th><th>Status</th></tr></thead>
-      <tbody>${rows}</tbody></table>`;
-  }
-
-  if(opts.log){
-    let rel=[...releases];
-    if(opts.from) rel=rel.filter(r=>r.release_date&&r.release_date>=opts.from);
-    if(opts.to) rel=rel.filter(r=>r.release_date&&r.release_date<=opts.to);
-    // Group by release (name → bulk_id → standalone single), each separated by a banded header, sorted by date.
+  // Release groups (name → bulk_id → single), most recent first
+  const groupReleases=(list)=>{
     const lg=[], lgi={};
-    for(const r of rel){
+    for(const r of list){
       const nm=(r.release_name||'').trim();
       const key=nm?('name::'+nm.toLowerCase()):(r.bulk_id?('bulk::'+r.bulk_id):('solo::'+r.id));
       if(lgi[key]==null){ lgi[key]=lg.length; lg.push({name:nm,bulk:!!r.bulk_id,items:[]}); }
@@ -3380,93 +3644,580 @@ function exportPdf(opts){
       g.items.sort((a,b)=>String(b.release_date||'').localeCompare(String(a.release_date||'')));
       g.date=g.items.map(x=>x.release_date||'').filter(Boolean).sort().at(-1)||'';
       g.total=g.items.reduce((s,x)=>s+(parseInt(x.qty)||0),0);
+      const sts=[...new Set(g.items.map(x=>x.status||'Released'))]; g.status=sts.length===1?sts[0]:'Mixed';
     });
-    lg.sort((a,b)=>String(b.date).localeCompare(String(a.date))); // most recent release first
-    const cols=5+(internal?3:0); // item,cat,qty,date (+needby,supplier) status (+loggedby)
-    let rowsHtml='';
-    if(!lg.length){
-      rowsHtml=`<tr><td colspan="${cols}" style="text-align:center;color:#999;padding:14px">No releases${(opts.from||opts.to)?' in this date range':' logged yet'}.</td></tr>`;
-    } else {
-      for(const g of lg){
-        const label = g.name ? esc(g.name) : (g.bulk ? 'Bulk release' : 'Single release');
-        rowsHtml += `<tr class="relhdr"><td colspan="${cols}">📦 ${label}<span class="rmeta"> · ${g.date||'no date'} · ${g.items.length} item${g.items.length!==1?'s':''} · ${g.total.toLocaleString()} units${(internal&&g.items[0].supplier)?' · '+esc(g.items[0].supplier):''}</span></td></tr>`;
-        for(const r of g.items){
-          rowsHtml += `<tr>
-            <td>${esc(r.item_id)}</td>
-            <td>${esc((r.category||'').split(' ')[0])}</td>
-            <td class="num">${(parseInt(r.qty)||0).toLocaleString()}</td>
-            <td>${esc(r.release_date||'—')}</td>
-            ${internal?`<td>${esc(r.need_by||'—')}</td><td>${esc(r.supplier||'—')}</td>`:''}
-            <td>${esc(r.status||'Released')}</td>
-            ${internal?`<td>${esc(r.logged_by_username||'—')}</td>`:''}
-          </tr>`;
-        }
+    lg.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    return lg;
+  };
+  const fmtDate=d=>{ if(!d) return '—'; const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d); if(!m) return esc(d); return new Date(+m[1],+m[2]-1,+m[3]).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}); };
+
+  // ── Building blocks ──
+  const repCard = rep ? `<div class="rep">
+      <div class="rep-lbl">Your ULE Group contact</div>
+      ${rep.name?`<div class="rep-name">${esc(rep.name)}</div>`:''}
+      ${rep.phone?`<div class="rep-line">${esc(rep.phone)}</div>`:''}
+      ${rep.email?`<div class="rep-line">${esc(rep.email)}</div>`:''}
+    </div>` : '';
+
+  const summaryBlock = `<section class="summary">
+      <div class="donut">${pdfDonut(pct, snapshot?112:124)}</div>
+      <div class="kpis">
+        <div class="kpi"><div class="lbl">Units released</div><div class="val">${relQtyTotal.toLocaleString()}</div><div class="sub">of ${totalQty.toLocaleString()} on the BOM</div></div>
+        <div class="kpi"><div class="lbl">Units remaining</div><div class="val">${remainingTotal.toLocaleString()}</div><div class="sub">still to release</div></div>
+        <div class="kpi"><div class="lbl">Items started</div><div class="val">${started}<span class="of"> / ${nRel}</span></div><div class="sub">at least one release</div></div>
+        <div class="kpi"><div class="lbl">Fully released</div><div class="val">${fullRel}<span class="of"> / ${nRel}</span></div><div class="sub">line items complete</div></div>
+      </div>
+    </section>`;
+
+  const statusBlock = `<section class="status">
+      <div class="h3">Line item status</div>
+      <div class="sbar">${PDF_STATUS_ORDER.filter(s=>sc[s]>0).map(s=>`<div style="flex:${sc[s]};background:${PDF_STATUS_COLOR[s]}"></div>`).join('')||'<div style="flex:1;background:#eef1f6"></div>'}</div>
+      <div class="legend">${PDF_STATUS_ORDER.map(s=>`<span><i style="background:${PDF_STATUS_COLOR[s]}"></i>${s} <b>${sc[s]}</b></span>`).join('')}</div>
+    </section>`;
+
+  const catRowsAll=cats.map(cat=>{
+    const ci=items.filter(i=>i.cat===cat), cir=ci.filter(isReleasable);
+    const t=bomTotal(ci), r=cir.reduce((s,i)=>s+itemRelQty(i.id),0), p=t>0?Math.round(r/t*100):0;
+    return {cat,n:cir.length,t,r,p};
+  });
+  const catTable=(rows, more)=>`<table class="tbl">
+      <thead><tr><th>Category</th><th class="num">Items</th><th class="num">BOM qty</th><th class="num">Released</th><th class="num">Remaining</th><th class="prog">Progress</th></tr></thead>
+      <tbody>${rows.map(c=>`<tr><td>${esc(c.cat)}</td><td class="num">${c.n}</td><td class="num">${c.t.toLocaleString()}</td><td class="num">${c.r.toLocaleString()}</td><td class="num">${(c.t-c.r).toLocaleString()}</td><td class="prog"><div class="pbar"><div style="width:${Math.min(100,c.p)}%"></div></div><span>${c.p}%</span></td></tr>`).join('')}
+      ${more?`<tr><td colspan="6" class="more">+ ${more} more categor${more===1?'y':'ies'} in the full report</td></tr>`:''}</tbody>
+      <tfoot><tr><td>Total</td><td class="num">${nRel}</td><td class="num">${totalQty.toLocaleString()}</td><td class="num">${relQtyTotal.toLocaleString()}</td><td class="num">${remainingTotal.toLocaleString()}</td><td class="prog"><div class="pbar"><div style="width:${Math.min(100,pct)}%"></div></div><span>${pct}%</span></td></tr></tfoot>
+    </table>`;
+
+  let body='';
+  if(snapshot){
+    const CAP=10;
+    body+=summaryBlock+statusBlock;
+    body+=`<h2>Progress by category</h2>`+catTable(catRowsAll.slice(0,CAP), Math.max(0,catRowsAll.length-CAP));
+    const groups=groupReleases(releases).slice(0,5);
+    body+=`<div class="two">
+      <div><h2>Recent releases</h2>${groups.length?`<table class="tbl compact"><thead><tr><th>Release</th><th>Date</th><th class="num">Items</th><th class="num">Units</th><th>Status</th></tr></thead><tbody>
+        ${groups.map(g=>`<tr><td>${esc(g.name||(g.bulk?'Bulk release':'Single release'))}</td><td class="nowrap">${fmtDate(g.date)}</td><td class="num">${g.items.length}</td><td class="num">${g.total.toLocaleString()}</td><td>${g.status==='Mixed'?'<span class="st" style="background:#eef1f6;color:#5b6474">Mixed</span>':pdfStatusTag(g.status)}</td></tr>`).join('')}
+        </tbody></table>`:'<p class="empty">No releases logged yet.</p>'}</div>
+      <div><h2>Largest open items</h2>${(()=>{
+        const open=releasable.map(i=>({i,rem:i.totalQty-itemRelQty(i.id)})).filter(x=>x.rem>0).sort((a,b)=>b.rem-a.rem).slice(0,6);
+        return open.length?`<table class="tbl compact"><thead><tr><th>Item</th><th class="num">Remaining</th><th>Status</th></tr></thead><tbody>
+          ${open.map(x=>`<tr><td>${esc(x.i.desc)}</td><td class="num">${x.rem.toLocaleString()}</td><td>${pdfStatusTag(itemStatus(x.i))}</td></tr>`).join('')}</tbody></table>`
+          :'<p class="empty">Everything on the BOM has been released.</p>';
+      })()}</div>
+    </div>`;
+  } else {
+    if(opts.kpis) body+=summaryBlock;
+    if(opts.status) body+=statusBlock;
+    if(opts.categories) body+=`<h2>Progress by category</h2>`+catTable(catRowsAll,0);
+
+    if(opts.co && !cust){
+      const adders=items.filter(i=>i.co==='adder').reduce((s,i)=>s+i.totalQty,0);
+      const deducts=items.filter(i=>i.co==='deduct').reduce((s,i)=>s+i.totalQty,0);
+      const qd=items.filter(i=>i.co==='qty_change').reduce((s,i)=>s+(i.totalQty-(i.origQty||0)),0);
+      if(adders||deducts||qd){
+        body+=`<h2>Change-order scope</h2><table class="tbl scope"><tbody>
+          <tr><td>Original BOM</td><td class="num">${originalBomTotal(items).toLocaleString()}</td></tr>
+          <tr><td>Adders</td><td class="num">+${adders.toLocaleString()}</td></tr>
+          <tr><td>Deducts</td><td class="num">−${deducts.toLocaleString()}</td></tr>
+          <tr><td>Qty changes</td><td class="num">${qd>=0?'+':''}${qd.toLocaleString()}</td></tr>
+          </tbody><tfoot><tr><td>Revised total</td><td class="num">${totalQty.toLocaleString()}</td></tr></tfoot></table>`;
       }
     }
-    const range=(opts.from||opts.to)?` (${opts.from||'start'} → ${opts.to||'today'})`:'';
-    body+=`<h2>Release history${range} · ${rel.length}</h2><table>
-      <thead><tr><th>Item</th><th>Category</th><th class="num">Qty</th><th>Release date</th>${internal?'<th>Need by</th><th>Supplier</th>':''}<th>Status</th>${internal?'<th>Logged by</th>':''}</tr></thead>
-      <tbody>${rowsHtml}</tbody></table>`;
+
+    if(opts.items){
+      const byCat={}; items.forEach(i=>{ (byCat[i.cat]=byCat[i.cat]||[]).push(i); });
+      let rows='';
+      for(const cat of cats){
+        const list=byCat[cat]||[]; if(!list.length) continue;
+        rows+=`<tr class="grp"><td colspan="6">${esc(cat)}<span class="gmeta"> · ${list.length} item${list.length!==1?'s':''}</span></td></tr>`;
+        rows+=list.map(i=>{
+          const relq=isReleasable(i)?itemRelQty(i.id):0;
+          const qd=(i.co==='deduct'?-i.totalQty:i.totalQty);
+          const p=(isReleasable(i)&&i.totalQty>0)?Math.round(relq/i.totalQty*100):0;
+          const coTag=i.co?` <span class="tag">${esc((i.coLabel?i.coLabel+' ':'')+coTypeLabel(i.co))}</span>`:'';
+          return `<tr><td>${esc(i.desc)}${coTag}</td><td class="num">${qd.toLocaleString()}</td><td class="num">${isReleasable(i)?relq.toLocaleString():'—'}</td><td class="num">${isReleasable(i)?(i.totalQty-relq).toLocaleString():'—'}</td><td class="prog">${isReleasable(i)?`<div class="pbar sm"><div style="width:${Math.min(100,p)}%"></div></div><span>${p}%</span>`:'—'}</td><td>${isReleasable(i)?pdfStatusTag(itemStatus(i)):'<span class="st" style="background:#fdecec;color:#b42318">Deduct</span>'}</td></tr>`;
+        }).join('');
+      }
+      body+=`<h2>All line items · ${items.length}</h2><table class="tbl">
+        <thead><tr><th>Description</th><th class="num">BOM</th><th class="num">Released</th><th class="num">Remaining</th><th class="prog">Progress</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody></table>`;
+    }
+
+    if(opts.log){
+      let rel=[...releases];
+      if(opts.from) rel=rel.filter(r=>r.release_date&&r.release_date>=opts.from);
+      if(opts.to) rel=rel.filter(r=>r.release_date&&r.release_date<=opts.to);
+      const lg=groupReleases(rel);
+      const cols=5+(internal?3:0);
+      let rowsHtml='';
+      if(!lg.length){
+        rowsHtml=`<tr><td colspan="${cols}" class="empty">No releases${(opts.from||opts.to)?' in this date range':' logged yet'}.</td></tr>`;
+      } else {
+        for(const g of lg){
+          const label = g.name ? esc(g.name) : (g.bulk ? 'Bulk release' : 'Single release');
+          rowsHtml += `<tr class="grp"><td colspan="${cols}">${label}<span class="gmeta"> · ${fmtDate(g.date)} · ${g.items.length} item${g.items.length!==1?'s':''} · ${g.total.toLocaleString()} units${(internal&&g.items[0].supplier)?' · '+esc(g.items[0].supplier):''}</span></td></tr>`;
+          for(const r of g.items){
+            rowsHtml += `<tr>
+              <td>${esc(r.item_id)}</td>
+              <td>${esc(catShort(r.category||''))}</td>
+              <td class="num">${(parseInt(r.qty)||0).toLocaleString()}</td>
+              <td class="nowrap">${fmtDate(r.release_date)}</td>
+              ${internal?`<td class="nowrap">${fmtDate(r.need_by)}</td><td>${esc(r.supplier||'—')}</td>`:''}
+              <td>${pdfStatusTag(r.status||'Released')}</td>
+              ${internal?`<td>${esc(r.logged_by_username||'—')}</td>`:''}
+            </tr>`;
+          }
+        }
+      }
+      const range=(opts.from||opts.to)?` · ${opts.from?fmtDate(opts.from):'start'} – ${opts.to?fmtDate(opts.to):'today'}`:'';
+      body+=`<h2>Release history · ${rel.length} line${rel.length!==1?'s':''}${range}</h2><table class="tbl">
+        <thead><tr><th>Item</th><th>Category</th><th class="num">Qty</th><th>Release date</th>${internal?'<th>Need by</th><th>Supplier</th>':''}<th>Status</th>${internal?'<th>Logged by</th>':''}</tr></thead>
+        <tbody>${rowsHtml}</tbody></table>`;
+    }
   }
 
-  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(jobName)} — ULETrack Report</title>
+  const footLeft=pdfCssStr((customer?customer+' · ':'')+jobName);
+  const kind=snapshot?'Job snapshot':'Material release report';
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(fileTitle)}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box}
-    body{font-family:Arial,Helvetica,sans-serif;color:#1a1917;margin:0;padding:34px 32px;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .brandbar{height:5px;background:linear-gradient(90deg,#1a5fa8,#2f78c4);border-radius:3px;margin-bottom:14px}
-    .head{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid #e5e3dc;margin-bottom:16px}
-    .head img{height:46px;width:auto}
-    .head .meta{text-align:right;font-size:10.5px;color:#6b6860;line-height:1.5}
-    .head .meta b{color:#1a5fa8}
-    h1{font-size:21px;margin:2px 0 3px;letter-spacing:-.01em}
-    .cust{font-size:17px;font-weight:700;color:#333;display:flex;align-items:center;gap:8px;margin:6px 0 8px}
-    .cust .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
-    .note{font-size:12px;color:#444;background:#f7f6f2;border-left:3px solid #1a5fa8;padding:7px 11px;border-radius:0 6px 6px 0;margin:10px 0 18px}
-    .kpis{display:flex;gap:10px;margin:16px 0 4px}
-    .kpi{flex:1;border:1px solid #e5e3dc;border-radius:9px;padding:11px 13px;background:#fcfbf8}
-    .kpi.accent{background:linear-gradient(155deg,#eaf2fb,#fcfbf8 70%);border-color:#bcd5ee}
-    .kpi .lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#7a766e}
-    .kpi .val{font-size:23px;font-weight:700;margin-top:3px;color:#1a1917}
-    .kpi.accent .val{color:#1a5fa8}
-    .kpi .of{font-size:12px;color:#9e9b96;font-weight:400}
-    .kpi .sub{font-size:10px;color:#7a766e;margin-top:1px}
-    .pbar{display:inline-block;width:60px;height:5px;background:#e8e6de;border-radius:9px;overflow:hidden;vertical-align:middle;margin-right:6px}
-    .pbar.big{display:block;width:100%;height:6px;margin-top:8px}
-    .pfill{height:100%;background:#1a5fa8;border-radius:9px}
-    .pills{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 6px}
-    .pill{font-size:11px;border:1px solid #ddd;border-radius:99px;padding:4px 11px}
-    .pill-n{font-weight:700}
-    h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#1a5fa8;border-bottom:1px solid #e5e3dc;padding-bottom:5px;margin:24px 0 9px}
-    table{width:100%;border-collapse:collapse;font-size:11px}
-    th{text-align:left;background:#f3f2ee;border-bottom:1px solid #ddd;padding:6px 8px;font-size:9.5px;text-transform:uppercase;letter-spacing:.03em;color:#6b6860}
-    th.num,td.num{text-align:right}
-    td{padding:5px 8px;border-bottom:1px solid #efede7}
-    tr{page-break-inside:avoid}
-    tr.bulk td{background:#eef4fb}
-    tr.relhdr td{background:#eaf2fb;border-top:2px solid #bcd5ee;border-bottom:1px solid #cfe0f2;font-weight:700;color:#1a5fa8;font-size:10.5px;padding:6px 8px}
-    tr.relhdr .rmeta{font-weight:400;color:#555;font-size:10px}
-    tfoot td{border-top:2px solid #ddd;font-weight:700;background:#faf9f5}
-    .tag{background:#1a5fa8;color:#fff;border-radius:3px;font-size:8px;padding:1px 5px;text-transform:uppercase;vertical-align:middle;white-space:nowrap}
-    .foot{margin-top:26px;font-size:9px;color:#9e9b96;text-align:center;border-top:1px solid #efede7;padding-top:9px}
-    @media print{body{padding:0}@page{margin:14mm}h2{break-after:avoid}}
+    @page{size:letter;margin:13mm 12mm 15mm;
+      @bottom-left{content:"${footLeft}";font:8.5px Inter,Arial,sans-serif;color:#8a93a3}
+      @bottom-right{content:"Page " counter(page) " of " counter(pages);font:8.5px Inter,Arial,sans-serif;color:#8a93a3}}
+    html,body{margin:0}
+    body{font-family:Inter,Arial,Helvetica,sans-serif;color:#141b26;font-size:${snapshot?'10.5px':'11px'};line-height:1.4;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:28px 30px}
+    @media print{body{padding:0}}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:12px;border-bottom:3px solid #0e1a2e;position:relative}
+    .top:after{content:"";position:absolute;left:0;bottom:-3px;width:90px;height:3px;background:#f5b301}
+    .top img{height:40px;width:auto}
+    .brandtxt{font-weight:800;font-size:18px;color:#0e1a2e;letter-spacing:.02em}
+    .top .kind{text-align:right}
+    .top .kind b{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#1c56a5}
+    .top .kind span{font-size:10px;color:#6b7280}
+    .titlebar{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin:18px 0 ${snapshot?'12px':'16px'}}
+    .eyebrow{font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b7280}
+    h1{font-size:${snapshot?'22px':'25px'};line-height:1.15;margin:4px 0 4px;letter-spacing:-.02em;color:#0e1a2e}
+    .tsub{font-size:10.5px;color:#6b7280}
+    .rep{min-width:190px;max-width:240px;border:1px solid #dfe4ec;border-left:3px solid #f5b301;border-radius:8px;padding:9px 12px;background:#fafbfd}
+    .rep-lbl{font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6b7280;margin-bottom:3px}
+    .rep-name{font-weight:700;font-size:12px;color:#0e1a2e}
+    .rep-line{font-size:10.5px;color:#334155}
+    .note{font-size:11px;color:#334155;background:#f3f6fb;border-left:3px solid #1c56a5;padding:7px 11px;border-radius:0 6px 6px 0;margin:0 0 14px}
+    .summary{display:flex;align-items:center;gap:22px;border:1px solid #e3e8ef;border-radius:12px;padding:${snapshot?'12px 16px':'14px 18px'};background:linear-gradient(180deg,#fbfcfe,#fff)}
+    .donut{flex-shrink:0;line-height:0}
+    .kpis{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+    .kpi{padding:2px 14px;border-left:1px solid #e3e8ef}
+    .kpi .lbl{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6b7280}
+    .kpi .val{font-size:${snapshot?'19px':'21px'};font-weight:800;color:#0e1a2e;margin-top:3px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+    .kpi .of{font-size:11px;font-weight:500;color:#9aa3b2}
+    .kpi .sub{font-size:9.5px;color:#7a8394;margin-top:1px}
+    .status{margin-top:${snapshot?'10px':'14px'}}
+    .h3{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#6b7280;margin-bottom:6px}
+    .sbar{display:flex;height:10px;border-radius:99px;overflow:hidden;gap:2px;background:#fff}
+    .legend{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:7px;font-size:10px;color:#475467}
+    .legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+    .legend b{color:#0e1a2e;margin-left:2px}
+    h2{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#0e1a2e;margin:${snapshot?'16px 0 7px':'22px 0 8px'};padding-left:8px;border-left:3px solid #f5b301;break-after:avoid}
+    .tbl{width:100%;border-collapse:collapse;font-size:${snapshot?'10px':'10.5px'}}
+    .tbl thead{display:table-header-group}
+    .tbl th{text-align:left;background:#0e1a2e;color:#fff;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 8px}
+    .tbl th:first-child{border-radius:6px 0 0 0}.tbl th:last-child{border-radius:0 6px 0 0}
+    .tbl td{padding:${snapshot?'4px 8px':'5px 8px'};border-bottom:1px solid #edf0f5;vertical-align:middle}
+    .tbl tbody tr:nth-child(even) td{background:#fafbfd}
+    .tbl tr{break-inside:avoid}
+    .tbl .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .tbl .nowrap{white-space:nowrap}
+    .tbl .prog{white-space:nowrap;width:120px}
+    .tbl .prog span{font-size:9.5px;color:#475467;font-variant-numeric:tabular-nums;display:inline-block;min-width:28px;text-align:right}
+    .tbl tfoot td{font-weight:800;border-top:2px solid #0e1a2e;border-bottom:none;background:#f3f6fb}
+    .tbl tr.grp td{background:#eef3fa!important;color:#0e1a2e;font-weight:700;font-size:10px;border-top:1px solid #cddbef;padding:6px 8px}
+    .tbl tr.grp .gmeta{font-weight:500;color:#5b6474}
+    .tbl.scope{max-width:360px}
+    .pbar{display:inline-block;width:70px;height:6px;background:#e6ebf2;border-radius:99px;overflow:hidden;vertical-align:middle;margin-right:6px}
+    .pbar.sm{width:52px}
+    .pbar div{height:100%;background:#1c56a5;border-radius:99px}
+    .st{display:inline-block;font-size:8.5px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap;letter-spacing:.02em}
+    .tag{background:#1c56a5;color:#fff;border-radius:3px;font-size:7.5px;padding:1px 5px;text-transform:uppercase;vertical-align:middle;white-space:nowrap}
+    .empty{color:#8a93a3;text-align:center;padding:12px;font-size:10.5px}
+    .more{color:#6b7280;font-style:italic;text-align:center}
+    .two{display:grid;grid-template-columns:1.15fr 1fr;gap:16px}
+    .two .tbl td{max-width:220px}
+    .closing{margin-top:22px;padding-top:10px;border-top:1px solid #e3e8ef;display:flex;justify-content:space-between;gap:12px;font-size:9px;color:#8a93a3;break-inside:avoid}
+    .closing b{color:#0e1a2e}
   </style></head>
-  <body onload="window.print()">
-    <div class="brandbar"></div>
-    <div class="head">
-      ${logo?`<img src="${logo}" alt="ULE Group">`:'<div style="font-weight:700;font-size:18px;color:#1a5fa8">ULE GROUP</div>'}
-      <div class="meta"><b>ULETrack</b> — Material Release Report<br>by ULE Group${by?' · Prepared by '+esc(by):''}<br>${esc(now)}</div>
-    </div>
-    <h1>${esc(jobName)}</h1>
-    ${customer?`<div class="cust"><span class="dot" style="background:${custColor}"></span>${esc(customer)}</div>`:''}
-    ${opts.note?`<div class="note">${esc(opts.note)}</div>`:'<div style="margin-bottom:6px"></div>'}
+  <body>
+    <header class="top">
+      ${logo?`<img src="${logo}" alt="ULE Group">`:'<div class="brandtxt">ULE GROUP</div>'}
+      <div class="kind"><b>${kind}</b><span>${esc(dateLong)}</span></div>
+    </header>
+    <section class="titlebar">
+      <div>
+        ${customer?`<div class="eyebrow">Prepared for ${esc(customer)}</div>`:'<div class="eyebrow">Project status</div>'}
+        <h1>${esc(jobName)}</h1>
+        <div class="tsub">Material release status as of ${esc(dateLong)}${by?' · Prepared by '+esc(by):''}</div>
+      </div>
+      ${repCard}
+    </section>
+    ${opts.note?`<div class="note">${esc(opts.note)}</div>`:''}
     ${body}
-    <div class="foot">ULETrack · by ULE Group · Powered by Partnerships · uletrack.com</div>
+    <div class="closing">
+      <div><b>ULE Group</b> · Powered by Partnerships</div>
+      <div>Generated with ULETrack · uletrack.com</div>
+    </div>
+    <script>
+      (function(){ var fired=false; function go(){ if(fired) return; fired=true; setTimeout(function(){ window.print(); }, 150); }
+        window.addEventListener('load', function(){ (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(go, go); });
+        setTimeout(go, 3000); })();
+    <\/script>
   </body></html>`;
+}
 
-  const win=window.open('','_blank');
-  if(!win){ alert('Please allow pop-ups to export the PDF report.'); return; }
-  win.document.write(html);
-  win.document.close();
+// ─── File naming: "customer - job name - date" ──────────────────────────────
+function localISODate(d){ d=d||new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function reportFileBase(job){
+  const clean=s=>String(s||'').replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim();
+  const parts=[];
+  if(job && job.customer && job.customer.trim()) parts.push(clean(job.customer));
+  parts.push(clean(job?job.name:'')||'Job');
+  parts.push(localISODate());
+  return parts.join(' - ');
+}
+
+// ─── ULE rep contact (set per customer login in the Admin panel) ─────────────
+let _myRep=undefined;     // customer: own rep (undefined = not loaded)
+let _repCache={};         // staff: jobId → rep of that job's customer login(s)
+function repFrom(u){
+  if(!u) return null;
+  const r={name:(u.rep_name||'').trim(), phone:(u.rep_phone||'').trim(), email:(u.rep_email||'').trim()};
+  return (r.name||r.phone||r.email) ? r : null;
+}
+async function loadMyRep(){
+  if(!currentUser || !isCustomer()){ _myRep=null; return null; }
+  try{ const rows=await sbGet('users',`id=eq.${currentUser.id}&select=rep_name,rep_phone,rep_email`); _myRep=repFrom(rows[0]); }
+  catch(e){ _myRep=null; }   // columns not installed yet
+  return _myRep;
+}
+async function repForJob(jobId){
+  if(isCustomer()){ if(_myRep===undefined) await loadMyRep(); return _myRep; }
+  if(!jobId) return null;
+  if(Object.prototype.hasOwnProperty.call(_repCache,jobId)) return _repCache[jobId];
+  let rep=null;
+  try{
+    const asn=await sbGet('job_assignments',`job_id=eq.${encodeURIComponent(jobId)}&select=user_id`);
+    const ids=asn.map(a=>a.user_id).filter(Boolean);
+    if(ids.length){
+      const us=await sbGet('users',`id=in.(${ids.join(',')})&role=eq.customer&select=rep_name,rep_phone,rep_email`);
+      for(const u of us){ rep=repFrom(u); if(rep) break; }
+    }
+  }catch(e){ rep=null; }
+  _repCache[jobId]=rep;
+  return rep;
+}
+function telHref(p){ return 'tel:'+String(p||'').replace(/[^0-9+]/g,''); }
+function repHeroHtml(rep){
+  if(!rep) return '';
+  return `<div class="hero-rep">
+    <div class="hero-rep-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    <div class="hero-rep-body">
+      <div class="hero-rep-lbl">Your ULE Group rep</div>
+      ${rep.name?`<div class="hero-rep-name">${esc(rep.name)}</div>`:''}
+      <div class="hero-rep-links">
+        ${rep.phone?`<a href="${esc(telHref(rep.phone))}"><svg class="ic" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.18 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.1 9.9a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${esc(rep.phone)}</a>`:''}
+        ${rep.email?`<a href="mailto:${esc(rep.email)}"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>${esc(rep.email)}</a>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── Release requests ───────────────────────────────────────────────────────
+// Customers ask for material; staff see a Requests inbox and turn a request
+// into a release (bulk release form pre-filled). Needs stage4 SQL; hidden until then.
+let _reqAvail=null;       // null = unknown, true/false once checked
+let _openReqs=[];         // staff: open request lines on visible jobs
+let _myReqs=[];           // customer: request lines on the current job
+let _fulfillGroup=null;   // request group being filled by the open bulk-release form
+let reqItems=[];
+async function checkRequestsAvail(){
+  if(_reqAvail!==null) return _reqAvail;
+  try{ await sbGet('release_requests','select=id&limit=1'); _reqAvail=true; }
+  catch(e){ if(/PGRST20[05]|Could not find the table|does not exist|404/i.test(String(e))) _reqAvail=false; }
+  applyRequestUi();
+  return _reqAvail;
+}
+function applyRequestUi(){
+  const on=!!(_reqAvail && currentUser);
+  const rb=document.getElementById('request-btn');
+  if(rb){ rb.style.display=(on && isCustomer())?'flex':'none'; rb.disabled=!currentJobId; }
+  const ib=document.getElementById('req-inbox-btn');
+  if(ib) ib.style.display=(on && !isCustomer())?'inline-flex':'none';
+  updateReqBadge();
+}
+function updateReqBadge(){
+  const n=new Set(_openReqs.map(r=>r.request_group)).size;
+  const b=document.getElementById('req-count');
+  if(b){ b.textContent=n; b.classList.toggle('has',n>0); }
+}
+async function loadRequests(){
+  if(!currentUser) return;
+  if(_reqAvail===null) await checkRequestsAvail();
+  if(!_reqAvail) return;
+  try{
+    if(isCustomer()){
+      _myReqs = currentJobId ? await sbGet('release_requests',`job_id=eq.${encodeURIComponent(currentJobId)}&order=created_at.desc&limit=300`) : [];
+    }else{
+      const rows=await sbGet('release_requests','status=eq.open&order=created_at.asc&limit=1000');
+      const vis=new Set(jobs.map(j=>j.id));
+      _openReqs=rows.filter(r=>vis.has(r.job_id));
+    }
+  }catch(e){ /* keep last good list */ }
+  updateReqBadge();
+  if(isCustomer()) renderMyRequests();
+}
+function groupRequests(list){
+  const m=new Map();
+  for(const r of list){
+    if(!m.has(r.request_group)) m.set(r.request_group,{id:r.request_group,job_id:r.job_id,status:r.status,created_at:r.created_at,
+      needed_by:r.needed_by,note:r.note,who:r.requested_by_username,company:r.company,staff_note:r.staff_note,
+      handled_by:r.handled_by_username,handled_at:r.handled_at,lines:[]});
+    const g=m.get(r.request_group); g.lines.push(r);
+    if(r.status==='open') g.status='open';
+  }
+  return [...m.values()].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+}
+const REQ_STATUS={open:['Open','rq-open'],released:['Released','rq-done'],declined:['Declined','rq-declined'],cancelled:['Cancelled','rq-cancel']};
+function reqPill(s){ const v=REQ_STATUS[s]||[s,'rq-cancel']; return `<span class="rq-pill ${v[1]}">${esc(v[0])}</span>`; }
+function fmtShortDate(d){
+  if(!d) return '';
+  const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(d); if(!m) return esc(d);
+  return new Date(+m[1],+m[2]-1,+m[3]).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+}
+async function patchRequestGroup(gid, body){
+  _lastSelfWrite=Date.now();
+  const r=await sbFetch(`${SB_URL}/rest/v1/release_requests?request_group=eq.${encodeURIComponent(gid)}&status=eq.open`,
+    {method:'PATCH',headers:{...HDR,'Prefer':'return=representation'},body:JSON.stringify(body)});
+  if(!r.ok) throw await r.text();
+  _lastSelfWrite=Date.now();
+  return r.json();
+}
+
+// Customer: request form
+function openRequestModal(itemId){
+  if(!_reqAvail){ toast('Release requests are not available yet.'); return; }
+  if(!currentJobId){ toast('Select a job first.'); return; }
+  const job=jobs.find(j=>j.id===currentJobId);
+  reqItems=[];
+  activeModal={type:'request'};
+  document.getElementById('modal-title').textContent='Request a release';
+  document.getElementById('modal-body').innerHTML=`
+    <p style="font-size:12.5px;color:var(--text2);margin-bottom:.9rem">Tell ULE Group what you need on site for <strong>${esc(job?job.name:'')}</strong>. Your rep will confirm and schedule it.</p>
+    <div class="sec-label">Items</div>
+    <div class="search-wrap" style="margin-bottom:.5rem">
+      <input type="text" id="rq-search" placeholder="Search items to add…" oninput="renderReqSearch()" autocomplete="off">
+      <svg style="position:absolute;right:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2;pointer-events:none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <div id="rq-results" style="margin-bottom:.6rem"></div>
+    <div id="rq-items"></div>
+    <div class="form-grid" style="margin-top:.8rem">
+      <div class="form-row"><label>Needed on site by (optional)</label><input type="date" id="rq-date" min="${localISODate()}"></div>
+      <div class="form-row"><label>Note for your rep (optional)</label><input type="text" id="rq-note" maxlength="300" placeholder="e.g. Deliver to Level 3, gate B"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-blue" id="rq-submit" onclick="submitRequest()" disabled>Send request</button>
+    </div>`;
+  document.getElementById('overlay').classList.add('open');
+  if(itemId) addReqItem(itemId);
+  else setTimeout(()=>{ const s=document.getElementById('rq-search'); if(s) s.focus(); },50);
+}
+function renderReqSearch(){
+  const q=(document.getElementById('rq-search').value||'').trim().toLowerCase();
+  const el=document.getElementById('rq-results');
+  if(!q){ el.innerHTML=''; return; }
+  const already=new Set(reqItems.map(i=>i.itemId));
+  const matches=currentItems().filter(isReleasable).filter(i=>!already.has(i.id)&&i.desc.toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){ el.innerHTML='<p style="font-size:12px;color:var(--text3);padding:.3rem 0">No items found.</p>'; return; }
+  el.innerHTML=matches.map(item=>{
+    const remaining=item.totalQty-itemRelQty(item.id);
+    return `<div class="result-item" style="padding:7px 10px" onclick="addReqItem('${jsAttr(item.id)}')">
+      <div style="flex:1;min-width:0"><div class="result-desc" style="font-size:12px">${esc(item.desc)}</div>
+      <div class="result-cat">${esc(catShort(item.cat))} · ${Math.max(0,remaining).toLocaleString()} not yet released</div></div>
+      <button class="btn btn-blue" style="height:24px;padding:0 9px;font-size:11px;flex-shrink:0">+ Add</button></div>`;
+  }).join('');
+}
+function addReqItem(itemId){
+  const item=currentItems().find(i=>i.id===itemId); if(!item) return;
+  if(reqItems.some(i=>i.itemId===itemId)) return;
+  const remaining=Math.max(0,item.totalQty-itemRelQty(item.id));
+  reqItems.push({itemId:item.id,desc:item.desc,cat:item.cat,qty:remaining>0?remaining:1,remaining});
+  const s=document.getElementById('rq-search'); if(s) s.value='';
+  const res=document.getElementById('rq-results'); if(res) res.innerHTML='';
+  renderReqItems();
+  const inputs=document.querySelectorAll('#rq-items input[type=number]');
+  if(inputs.length){ inputs[inputs.length-1].focus(); inputs[inputs.length-1].select(); }
+}
+function renderReqItems(){
+  const el=document.getElementById('rq-items'); if(!el) return;
+  const btn=document.getElementById('rq-submit'); if(btn) btn.disabled=!reqItems.length;
+  if(!reqItems.length){ el.innerHTML='<div class="rq-empty">Search above and add the items you need.</div>'; return; }
+  el.innerHTML=`<div class="preview-table-wrap"><table class="preview-table"><thead><tr><th style="width:56%">Item</th><th style="width:18%">Not yet released</th><th style="width:18%">Qty needed</th><th style="width:8%"></th></tr></thead><tbody>
+    ${reqItems.map((it,i)=>`<tr><td style="font-size:12px" title="${esc(it.desc)}">${esc(it.desc)}</td>
+      <td style="font-size:11px;color:var(--text3)">${it.remaining.toLocaleString()}</td>
+      <td><input type="number" value="${it.qty}" min="1" style="width:76px;height:26px;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:0 6px;background:var(--surface2);color:var(--text)" oninput="reqItems[${i}].qty=parseInt(this.value)||0"></td>
+      <td><button onclick="reqItems.splice(${i},1);renderReqItems()" aria-label="Remove" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 4px">✕</button></td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+async function submitRequest(){
+  if(!reqItems.length){ toast('Add at least one item.'); return; }
+  const bad=reqItems.find(i=>!i.qty||i.qty<=0);
+  if(bad){ alert(`Enter a quantity for "${bad.desc}".`); return; }
+  const date=(document.getElementById('rq-date')||{}).value||null;
+  const note=((document.getElementById('rq-note')||{}).value||'').trim()||null;
+  const gid='rq_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  const rows=reqItems.map(i=>({request_group:gid,job_id:currentJobId,item_id:i.itemId,category:i.cat,qty:parseInt(i.qty)||0,needed_by:date,note}));
+  setBtnLoading('rq-submit',true,'Sending…');
+  try{
+    await sbPost('release_requests',rows);
+    closeModal();
+    toast('✓ Request sent to ULE Group');
+    await loadRequests();
+  }catch(e){ alert('Could not send the request: '+e); setBtnLoading('rq-submit',false,'Send request'); }
+}
+async function cancelMyRequest(gid){
+  if(!confirm('Cancel this request?')) return;
+  try{ await patchRequestGroup(gid,{status:'cancelled'}); toast('Request cancelled'); }
+  catch(e){ alert('Could not cancel: '+e); }
+  await loadRequests();
+}
+function renderMyRequests(){
+  const el=document.getElementById('my-requests'); if(!el) return;
+  if(!isCustomer() || !_reqAvail || !currentJobId){ el.innerHTML=''; return; }
+  const groups=groupRequests(_myReqs.filter(r=>r.job_id===currentJobId));
+  const shown=groups.filter(g=>g.status==='open').concat(groups.filter(g=>g.status!=='open').slice(0,6));
+  const desc=id=>{ const it=currentItems().find(i=>i.id===id); return it?it.desc:id; };
+  el.innerHTML=`<div class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <span>Your release requests <span class="muted">${groups.filter(g=>g.status==='open').length} open</span></span>
+      <button class="btn btn-blue" style="height:30px" onclick="openRequestModal()">+ Request a release</button></div>
+    ${shown.length?`<div class="rq-list">${shown.map(g=>{
+      const units=g.lines.reduce((s,l)=>s+(parseInt(l.qty)||0),0);
+      return `<div class="rq-card">
+        <div class="rq-top">
+          <div class="rq-title">${g.lines.length} item${g.lines.length!==1?'s':''} · ${units.toLocaleString()} units</div>
+          ${reqPill(g.status)}
+        </div>
+        <div class="rq-meta">Requested ${esc(timeAgo(g.created_at))}${g.who?' by '+esc(g.who):''}${g.needed_by?' · needed by '+fmtShortDate(g.needed_by):''}</div>
+        <ul class="rq-lines">${g.lines.slice(0,4).map(l=>`<li><span>${esc(desc(l.item_id))}</span><b>${(parseInt(l.qty)||0).toLocaleString()}</b></li>`).join('')}${g.lines.length>4?`<li class="more">+ ${g.lines.length-4} more</li>`:''}</ul>
+        ${g.note?`<div class="rq-note">“${esc(g.note)}”</div>`:''}
+        ${g.staff_note?`<div class="rq-reply"><b>ULE Group:</b> ${esc(g.staff_note)}</div>`:''}
+        ${g.status==='open'?`<div class="rq-actions"><button class="btn" style="height:26px;font-size:11.5px" onclick="cancelMyRequest('${jsAttr(g.id)}')">Cancel request</button></div>`:''}
+      </div>`; }).join('')}</div>`
+    :`<div class="rq-empty-card">Need material on site? <a href="#" onclick="openRequestModal();return false">Request a release</a> and your ULE rep will confirm it.</div>`}`;
+}
+
+// Staff: requests inbox
+async function openRequestsInbox(){
+  if(isCustomer()) return;
+  activeModal={type:'requests'};
+  document.getElementById('modal-title').textContent='Release requests';
+  document.getElementById('modal-body').innerHTML='<div class="empty-state"><span class="spinner"></span> Loading…</div>';
+  document.getElementById('overlay').classList.add('open');
+  await loadRequests();
+  let recent=[];
+  try{
+    const vis=new Set(jobs.map(j=>j.id));
+    recent=(await sbGet('release_requests','status=neq.open&order=handled_at.desc.nullslast&limit=150')).filter(r=>vis.has(r.job_id));
+  }catch(e){}
+  renderInbox(recent);
+}
+function renderInbox(recent){
+  if(!activeModal || activeModal.type!=='requests') return;
+  const open=groupRequests(_openReqs).reverse();   // oldest first
+  const done=groupRequests(recent).slice(0,15);
+  const jobN=id=>{ const j=jobs.find(x=>x.id===id); return j?j.name:id; };
+  const card=(g, actionable)=>{
+    const items=(jobItems[g.job_id]||[]);
+    const line=l=>{ const it=items.find(i=>i.item_name===l.item_id); return `<tr><td>${esc(l.item_id)}${it?'':' <span style="color:var(--red);font-size:10px">(not on BOM)</span>'}</td><td style="text-align:right;font-weight:600">${(parseInt(l.qty)||0).toLocaleString()}</td></tr>`; };
+    return `<div class="rq-card">
+      <div class="rq-top">
+        <div class="rq-title">${esc(g.company||g.who||'Customer')} <span class="muted">· ${esc(jobN(g.job_id))}</span></div>
+        ${reqPill(g.status)}
+      </div>
+      <div class="rq-meta">${g.who?esc(g.who)+' · ':''}${esc(timeAgo(g.created_at))}${g.needed_by?` · <b style="color:var(--text)">needed by ${fmtShortDate(g.needed_by)}</b>`:''}${!actionable&&g.handled_by?' · handled by '+esc(g.handled_by):''}</div>
+      <table class="rq-tbl"><tbody>${g.lines.map(line).join('')}</tbody></table>
+      ${g.note?`<div class="rq-note">“${esc(g.note)}”</div>`:''}
+      ${g.staff_note?`<div class="rq-reply"><b>Reply:</b> ${esc(g.staff_note)}</div>`:''}
+      ${actionable?`<div class="rq-actions">
+        ${can('release')?`<button class="btn btn-blue" style="height:28px;font-size:12px" onclick="fulfillRequest('${jsAttr(g.id)}')">Release…</button>`:''}
+        <button class="btn" style="height:28px;font-size:12px" onclick="declineRequest('${jsAttr(g.id)}')">Decline</button>
+      </div>`:''}
+    </div>`;
+  };
+  document.getElementById('modal-body').innerHTML=`
+    <div class="sec-label">Open · ${open.length}</div>
+    ${open.length?`<div class="rq-list">${open.map(g=>card(g,true)).join('')}</div>`:'<p style="font-size:12.5px;color:var(--text3);margin:.2rem 0 1rem">No open requests. Customer requests show up here.</p>'}
+    ${done.length?`<div class="sec-label" style="margin-top:1rem">Recently handled</div><div class="rq-list">${done.map(g=>card(g,false)).join('')}</div>`:''}
+    <div class="modal-actions"><button class="btn" onclick="closeModal()">Close</button></div>`;
+}
+async function fulfillRequest(gid){
+  const g=groupRequests(_openReqs).find(x=>x.id===gid); if(!g) return;
+  closeModal();
+  if(currentJobId!==g.job_id) await selectJob(g.job_id);
+  if(currentJobId!==g.job_id){ toast('You do not have access to that job.'); return; }
+  openBulkRelease();
+  const its=currentItems();
+  const missing=[];
+  bulkItems=g.lines.map(l=>{
+    const item=its.find(i=>i.id===l.item_id);
+    if(!item){ missing.push(l.item_id); return null; }
+    return {itemId:item.id,itemDesc:item.desc,cat:item.cat,qty:parseInt(l.qty)||1,totalQty:item.totalQty,releasedQty:itemRelQty(item.id)};
+  }).filter(Boolean);
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e&&v) e.value=v; };
+  set('br-needby', g.needed_by);
+  set('br-name', 'Request · '+(g.company||g.who||'customer'));
+  set('br-notes', g.note);
+  _fulfillGroup=gid;
+  const mb=document.getElementById('modal-body');
+  mb.insertAdjacentHTML('afterbegin',`<div class="rq-fill-banner">Filling a request from <b>${esc(g.company||g.who||'customer')}</b>. Submitting this release marks the request as released.${missing.length?`<br><span style="color:var(--red)">Not on the BOM: ${missing.map(esc).join(', ')}</span>`:''}</div>`);
+  renderBulkItems();
+}
+async function markFulfilled(gid){
+  try{ await patchRequestGroup(gid,{status:'released'}); }catch(e){ console.error(e); toast('Release saved, but the request could not be marked released.'); }
+  loadRequests();
+}
+async function declineRequest(gid){
+  const reason=prompt('Decline this request?\n\nOptional note for the customer (they will see it):','');
+  if(reason===null) return;
+  try{ await patchRequestGroup(gid,{status:'declined',staff_note:reason.trim()||null}); toast('Request declined'); }
+  catch(e){ alert('Could not decline: '+e); }
+  await openRequestsInbox();
+}
+
+// Admin: edit a customer's rep contact
+function toggleRepForm(uid, show){
+  const f=document.getElementById('repf-'+uid), l=document.getElementById('repl-'+uid);
+  if(f) f.style.display=show?'block':'none'; if(l) l.style.display=show?'none':'flex';
+}
+function repFillFromStaff(uid, sel){
+  const s=(window._adminStaff||[]).find(x=>x.id===sel.value); if(!s) return;
+  const n=document.getElementById('repn-'+uid), e=document.getElementById('repe-'+uid);
+  if(n) n.value=s.username; if(e && s.email) e.value=s.email;
+  sel.value='';
+}
+async function saveRep(uid){
+  const v=id=>((document.getElementById(id+uid)||{}).value||'').trim()||null;
+  const body={rep_name:v('repn-'),rep_phone:v('repp-'),rep_email:v('repe-')};
+  const all=document.getElementById('repall-'+uid);
+  const users=window._adminUsers||[];
+  const me=users.find(u=>u.id===uid);
+  const targets=[uid];
+  if(all && all.checked && me && me.company){
+    users.filter(u=>u.id!==uid && u.role==='customer' && (u.company||'').trim().toLowerCase()===me.company.trim().toLowerCase()).forEach(u=>targets.push(u.id));
+  }
+  try{
+    for(const id of targets) await sbPatch('users',id,body);
+    _repCache={};
+    toast(targets.length>1?`✓ Rep saved for ${targets.length} logins`:'✓ Rep saved');
+    openAdminPanel();
+  }catch(e){ alert('Could not save rep info: '+e); }
 }
 
 // ─── Auth & session ───────────────────────────────────────────────────────────
@@ -3481,6 +4232,9 @@ function startSession(s, legacy){
 }
 function clearSession(){
   currentUser = null; _sessTok = null;
+  _myRep=undefined; _repCache={}; _reqAvail=null; _openReqs=[]; _myReqs=[]; _fulfillGroup=null;
+  const _rb=document.getElementById('request-btn'); if(_rb) _rb.style.display='none';
+  const _ib=document.getElementById('req-inbox-btn'); if(_ib) _ib.style.display='none';
   try { localStorage.removeItem('ule-session'); } catch(e){}
 }
 function forceSignOut(msg){
@@ -3631,6 +4385,7 @@ function showApp() {
   const showCreate = can('createJob');
   document.getElementById('new-job-btn').style.display = showCreate ? 'flex' : 'none';
   document.getElementById('no-job-create-btn').style.display = showCreate ? '' : 'none';
+  applyRequestUi();
   document.getElementById('no-job-sub').textContent = showCreate
     ? 'Choose a job from the sidebar, or create a new one to get started.'
     : 'Select a job from the sidebar to view its materials and releases.';
@@ -3743,10 +4498,38 @@ async function openAdminPanel() {
   document.getElementById('modal-body').innerHTML = '<div class="empty-state"><span class="spinner"></span> Loading...</div>';
   document.getElementById('overlay').classList.add('open');
   try {
-    let users;
-    try{ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at,email,company'); }
+    let users, repCols=true;
+    try{ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at,email,company,rep_name,rep_phone,rep_email'); }
+    catch(e0){ repCols=false; try{ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at,email,company'); }
     catch(e){ try{ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at,email'); }
-      catch(e2){ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at'); } } // email/company columns may not exist pre-migration
+      catch(e2){ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at'); } } } // email/company/rep columns may not exist pre-migration
+    window._adminUsers = users;
+    window._adminStaff = users.filter(u=>u.role!=='customer');
+    const repBlock=(u)=>{
+      if(u.role!=='customer') return '';
+      if(!repCols) return `<div class="rep-box" style="color:var(--text3)">ULE rep contact: run the Stage 4 SQL to turn this on.</div>`;
+      const r=repFrom(u);
+      const sameCo=u.company?users.filter(x=>x.id!==u.id&&x.role==='customer'&&(x.company||'').trim().toLowerCase()===u.company.trim().toLowerCase()).length:0;
+      return `<div class="rep-box">
+        <div class="rep-line" id="repl-${u.id}"><span class="lbl">ULE rep</span>
+          ${r?`<span>${[r.name,r.phone,r.email].filter(Boolean).map(esc).join(' · ')}</span>`:'<span style="color:var(--amber)">Not set — customer sees no rep contact</span>'}
+          <button class="btn" style="height:22px;font-size:11px;margin-left:auto" onclick="toggleRepForm('${u.id}',true)">${r?'Edit':'Set rep'}</button></div>
+        <div class="rep-form" id="repf-${u.id}" style="display:none">
+          <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+            <input id="repn-${u.id}" placeholder="Rep name" value="${esc(u.rep_name||'')}">
+            <input id="repp-${u.id}" placeholder="Phone" value="${esc(u.rep_phone||'')}">
+            <input id="repe-${u.id}" placeholder="Email" value="${esc(u.rep_email||'')}">
+          </div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px">
+            <select onchange="repFillFromStaff('${u.id}',this)"><option value="">Fill from team member…</option>${window._adminStaff.map(s=>`<option value="${s.id}">${esc(s.username)}</option>`).join('')}</select>
+            ${sameCo?`<label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text2)"><input type="checkbox" id="repall-${u.id}" style="height:auto"> Also apply to the other ${sameCo} ${esc(u.company)} login${sameCo!==1?'s':''}</label>`:''}
+            <span style="flex:1"></span>
+            <button class="btn" style="height:26px;font-size:11.5px" onclick="toggleRepForm('${u.id}',false)">Cancel</button>
+            <button class="btn btn-blue" style="height:26px;font-size:11.5px" onclick="saveRep('${u.id}')">Save rep</button>
+          </div>
+        </div>
+      </div>`;
+    };
     const invites = await sbGet('invites', 'order=created_at.desc&limit=10&select=id,token,used_at,created_at');
     let assignments = [];
     try{ assignments = await sbGet('job_assignments', 'select=id,job_id,user_id'); }
@@ -3783,6 +4566,7 @@ async function openAdminPanel() {
               ${jobs.filter(j=>!(byUser[u.id]||[]).some(a=>a.job_id===j.id)).map(j=>`<option value="${esc(j.id)}">${esc(j.name)}</option>`).join('')}
             </select>
           </div>
+          ${repBlock(u)}
         </div>`}
         </div>`;
     // Group users by role so staff and customers are clearly separated

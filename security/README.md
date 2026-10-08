@@ -11,6 +11,8 @@ to stop after.
 | `stage3-lockdown.sql` | Step 3, at a quiet time | Replaces the "Allow all" rules with per-role rules. |
 | `stage3-UNDO.sql` | Emergency only | Puts "Allow all" back. Data untouched; sign-ins keep working. |
 | `stage1-UNDO.sql` | Emergency only | Removes the secure sign-in (run stage3-UNDO first and restore the old site). |
+| `stage4-customer-features.sql` | Any time after Step 3 | Adds rep contact info + customer release requests. Additive only. |
+| `stage4-UNDO.sql` | Emergency only | Removes rep info + release requests (deletes saved requests). |
 
 ## Step 1 — install secure sign-in
 1. Supabase → ULETrack project → **SQL Editor** → **+ New query**.
@@ -32,6 +34,18 @@ to stop after.
    - You (admin) still see every job and can log a release.
    - A customer login sees only their assigned job(s).
    - Signed out, the site shows nothing but the sign-in screen.
+
+## Step 4 — customer features (rep info + release requests)
+1. SQL Editor → paste all of `stage4-customer-features.sql` → **Run**.
+2. Expect one row: `Stage 4 installed | 3 | 4`.
+3. Hard refresh uletrack.com. Admin → each customer login now has **ULE rep → Set rep**.
+   ("Fill from team member" copies a name/email; tick "Also apply to the other … logins" to set a whole company at once.)
+4. Customers see their rep on their job screen and on reports, plus a **Request a release** button.
+   Staff see a **Requests** button (gold count = open requests). **Release…** opens the bulk-release form pre-filled;
+   submitting it marks the request released. **Decline** lets you send the customer a short note.
+- Until Stage 4 is run, these features stay hidden and everything else works as before.
+- Database rules: customers can only request on jobs assigned to them, can only cancel (not edit) their own open
+  requests, and can't fake who sent a request. Only admins can change rep info.
 
 ## If something goes wrong
 Run `stage3-UNDO.sql`. Everything returns to how it worked before Step 3,
