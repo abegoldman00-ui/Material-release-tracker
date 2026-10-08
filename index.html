@@ -90,7 +90,9 @@ svg.ic{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke
 
 /* ── Admin panel ── */
 .admin-user-row{display:flex;align-items:center;gap:12px;padding:.75rem .9rem;border:1px solid var(--border);border-radius:10px;margin-bottom:.5rem;background:var(--surface)}
-.admin-user-info{flex:1;min-width:0}
+.admin-user-row{flex-wrap:wrap;row-gap:8px}
+.admin-user-info{flex:1 1 200px;min-width:0}
+.admin-user-row .btn,.admin-user-row select{box-shadow:none}
 .admin-user-name{font-size:13.5px;font-weight:600}
 .admin-user-meta{font-size:12px;color:var(--text3)}
 .role-badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
@@ -474,12 +476,11 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
 <div class="login-screen hidden" id="forgot-screen">
   <div class="login-card">
     <div class="login-title">Reset your password</div>
-    <div class="login-sub">Enter your username and we'll email you a reset link.</div>
+    <div class="login-sub">For security, passwords are reset by your ULE Group representative. Contact them and they'll set a new one for you right away.</div>
     <div class="login-error" id="forgot-error"></div>
     <div class="login-error" id="forgot-ok" style="background:var(--green-bg);border-color:var(--green-border);color:var(--green)"></div>
     <div class="login-form">
-      <div class="form-row"><label>Username</label><input type="text" id="forgot-username" placeholder="Enter your username" autocomplete="username" onkeydown="if(event.key==='Enter')submitForgotPassword()"></div>
-      <button class="login-submit" id="forgot-submit" onclick="submitForgotPassword()">Send reset link</button>
+      <div style="display:none"><input type="text" id="forgot-username"><button id="forgot-submit"></button></div>
     </div>
     <div class="login-footer"><a href="#" onclick="backToLogin();return false;" style="color:var(--blue);text-decoration:none;font-weight:500">← Back to sign in</a></div>
   </div>
@@ -714,11 +715,45 @@ function can(action){
   }
 }
 
-async function sbGet(table,params=''){const r=await fetch(`${SB_URL}/rest/v1/${table}?${params}`,{headers:HDR});if(!r.ok)throw await r.text();return r.json();}
+// ─── Secure session transport ────────────────────────────────────────────────
+// After sign-in the database issues a session token. It's sent with every
+// request so the database's security rules know who is asking. If a browser or
+// network refuses the custom header, fall back to another way of sending it.
+let _sessTok = null;            // token from app_login / app_register
+let _hdrMode = 'custom';        // 'custom' (x-ule-session) → 'ci' (x-client-info) → 'none'
+let _secStatus = 'unknown';     // result of the last security self-check
+function authHeaders(base, mode){
+  const h = {...base}; mode = mode || _hdrMode;
+  if(_sessTok){ if(mode==='custom') h['x-ule-session']=_sessTok; else if(mode==='ci') h['x-client-info']='ule-session='+_sessTok; }
+  return h;
+}
+async function sbFetch(url, opts){
+  const base = opts.headers || HDR;
+  try { return await fetch(url, {...opts, headers: authHeaders(base)}); }
+  catch(e){
+    if(!_sessTok) throw e;
+    const order=['custom','ci','none'];
+    for(let i=order.indexOf(_hdrMode)+1; i<order.length; i++){
+      try { const r = await fetch(url, {...opts, headers: authHeaders(base, order[i])}); _hdrMode = order[i]; return r; } catch(_){}
+    }
+    throw e;
+  }
+}
+async function sbRpc(fn, args){
+  const r = await sbFetch(`${SB_URL}/rest/v1/rpc/${fn}`, {method:'POST', headers:HDR, body:JSON.stringify(args||{})});
+  const txt = await r.text();
+  if(!r.ok){ let m=txt, code=''; try{ const j=JSON.parse(txt); m=j.message||txt; code=j.code||''; }catch(_){}
+    const err=new Error(m); err.code=code; err.status=r.status; throw err; }
+  return txt ? JSON.parse(txt) : null;
+}
+// True when the database doesn't have the Stage 1 functions yet (keeps the old login working)
+function rpcMissing(e){ return e && (e.status===404 || e.code==='PGRST202' || /Could not find the function/i.test(e.message||'')); }
+
+async function sbGet(table,params=''){const r=await sbFetch(`${SB_URL}/rest/v1/${table}?${params}`,{headers:HDR});if(!r.ok)throw await r.text();return r.json();}
 let _lastSelfWrite=0; // timestamp of this client's most recent write — used to ignore Realtime echoes of our own changes
-async function sbPost(table,body){_lastSelfWrite=Date.now();const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:HDR,body:JSON.stringify(body)});if(!r.ok)throw await r.text();_lastSelfWrite=Date.now();return r.json();}
-async function sbPatch(table,id,body){_lastSelfWrite=Date.now();const r=await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:'PATCH',headers:{...HDR,'Prefer':'return=representation'},body:JSON.stringify(body)});if(!r.ok)throw await r.text();_lastSelfWrite=Date.now();return r.json();}
-async function sbDelete(table,id){_lastSelfWrite=Date.now();const r=await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:'DELETE',headers:HDR});if(!r.ok)throw await r.text();_lastSelfWrite=Date.now();}
+async function sbPost(table,body){_lastSelfWrite=Date.now();const r=await sbFetch(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:HDR,body:JSON.stringify(body)});if(!r.ok)throw await r.text();_lastSelfWrite=Date.now();return r.json();}
+async function sbPatch(table,id,body){_lastSelfWrite=Date.now();const r=await sbFetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:'PATCH',headers:{...HDR,'Prefer':'return=representation'},body:JSON.stringify(body)});if(!r.ok)throw await r.text();_lastSelfWrite=Date.now();return r.json();}
+async function sbDelete(table,id){_lastSelfWrite=Date.now();const r=await sbFetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:'DELETE',headers:HDR});if(!r.ok)throw await r.text();_lastSelfWrite=Date.now();}
 
 // ─── 70HY default BOM (pre-loaded job) ────────────────────────────────────────
 const DEFAULT_JOB_ID = '70hy-steel';
@@ -976,6 +1011,7 @@ function setJobHeader(job){
 // Re-check the signed-in user's role/account so access changes apply live
 async function syncCurrentUser(){
   if(!currentUser || !currentUser.id) return;
+  if(_sessTok){ await securityCheck(); return; }   // secure session: whoami covers role changes + expiry
   let rows;
   try{ rows=await sbGet('users',`id=eq.${currentUser.id}&select=id,role`); }catch(e){ return; }
   if(!rows.length){
@@ -3437,6 +3473,42 @@ function exportPdf(opts){
 let currentUser = null; // {id, username, role}
 
 // Password hashing - reliable across all browsers, no special chars
+// ─── Session helpers ─────────────────────────────────────────────────────────
+function startSession(s, legacy){
+  currentUser = {id:s.id, username:s.username, role:s.role};
+  _sessTok = legacy ? null : (s.token||null);
+  try { localStorage.setItem('ule-session', JSON.stringify({...currentUser, token:_sessTok, legacy:!!legacy})); } catch(e){}
+}
+function clearSession(){
+  currentUser = null; _sessTok = null;
+  try { localStorage.removeItem('ule-session'); } catch(e){}
+}
+function forceSignOut(msg){
+  clearSession();
+  releases=[]; jobs=[]; jobItems={}; currentJobId=null;
+  const ub=document.getElementById('user-badge'); if(ub) ub.style.display='none';
+  const ab=document.getElementById('admin-btn'); if(ab) ab.style.display='none';
+  showLoginScreen();
+  if(msg){ const le=document.getElementById('login-error'); if(le){ le.textContent=msg; le.style.cssText='display:block'; } }
+}
+function upgradeSignOut(){
+  forceSignOut('ULETrack has a security upgrade. Please sign in again — your username and password are unchanged.');
+  const le=document.getElementById('login-error');
+  if(le) le.style.cssText='display:block;background:var(--blue-bg);border-color:var(--blue-border);color:var(--blue)';
+}
+// Confirms the database recognizes this browser's sign-in token
+async function securityCheck(){
+  if(!_sessTok){ _secStatus = 'legacy'; return; }
+  try{
+    const w = await sbRpc('app_whoami', {});
+    if(w && w.ok){ _secStatus='ok';
+      if(currentUser && w.role && w.role!==currentUser.role){ currentUser.role=w.role; startSession({...currentUser, token:_sessTok}); showApp(); }
+    }
+    else if(w && w.reason==='invalid'){ _secStatus='expired'; forceSignOut('Your session has expired. Please sign in again.'); }
+    else { _secStatus='no_token'; console.warn('ULETrack security check: sign-in token is not reaching the database (mode '+_hdrMode+')'); }
+  }catch(e){ _secStatus = rpcMissing(e) ? 'not_installed' : 'error'; }
+}
+
 function hashPassword(password) {
   const str = password + 'ule-salt-2024';
   let h1 = 5381, h2 = 52711;
@@ -3573,15 +3645,22 @@ async function submitLogin() {
   btn.disabled = true; btn.textContent = 'Signing in...';
   errEl.style.display = 'none';
   try {
-    // Case-insensitive username match (ilike, then verify exactly ignoring case)
+    // Secure login: the database checks the password and issues a session token
+    let s = null, useLegacy = false;
+    try { s = await sbRpc('app_login', {p_username: username, p_password: password}); }
+    catch(e){ if(rpcMissing(e)) useLegacy = true; else throw e; }
+    if(!useLegacy){
+      if(!s){ errEl.textContent = 'Invalid username or password.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Sign in'; return; }
+      startSession(s); showApp(); loadAll(); securityCheck(); return;
+    }
+    // Fallback (only until the database security update is installed)
     const matches = await sbGet('users', `username=ilike.${encodeURIComponent(username)}&select=id,username,role,password_hash`);
     const u = matches.find(x => (x.username||'').toLowerCase() === username.toLowerCase());
     // Case-insensitive password: accept the lowercased hash (how passwords are stored now)
     // or the exact hash (legacy passwords set before this change)
     const ok = u && [hashPassword(password.toLowerCase()), hashPassword(password)].includes(u.password_hash);
     if (!ok) { errEl.textContent = 'Invalid username or password.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Sign in'; return; }
-    currentUser = {id:u.id, username:u.username, role:u.role};
-    try { localStorage.setItem('ule-session', JSON.stringify({id:currentUser.id,username:currentUser.username,role:currentUser.role})); } catch(e){}
+    startSession({id:u.id, username:u.username, role:u.role}, true);
     showApp();
     loadAll();
   } catch(e) { errEl.textContent='Login error: '+e; errEl.style.display='block'; btn.disabled=false; btn.textContent='Sign in'; }
@@ -3602,6 +3681,19 @@ async function submitRegister() {
   btn.disabled = true; btn.textContent = 'Creating account...';
   errEl.style.display = 'none';
   try {
+    // Secure sign-up: the database creates the account (always a view-only customer)
+    {
+      const inviteTok = new URLSearchParams(window.location.search).get('invite');
+      let s = null, useLegacy = false;
+      try { s = await sbRpc('app_register', {p_username:username, p_password:password, p_email:email||null, p_company:company||null, p_invite:inviteTok||null}); }
+      catch(e){ if(rpcMissing(e)) useLegacy = true; else { errEl.textContent = String(e.message||e); errEl.style.display='block'; btn.disabled=false; btn.textContent='Create account'; return; } }
+      if(!useLegacy){
+        startSession(s);
+        window.history.replaceState({}, '', window.location.pathname);
+        showApp(); loadAll(); securityCheck(); return;
+      }
+    }
+    // Fallback (only until the database security update is installed)
     // Check username not taken
     const existing = await sbGet('users', `username=ilike.${encodeURIComponent(username)}&select=id,username`);
     if(existing.some(x=>(x.username||'').toLowerCase()===username.toLowerCase())) { errEl.textContent='Username already taken.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Create account'; return; }
@@ -3624,8 +3716,7 @@ async function submitRegister() {
     const user = Array.isArray(newUser) ? newUser[0] : newUser;
     // Mark invite used (only if one was provided)
     if(invite) await sbPatch('invites', invite.id, {used_at: new Date().toISOString(), used_by: user.id});
-    currentUser = {id: user.id, username: user.username, role: user.role};
-    try { localStorage.setItem('ule-session', JSON.stringify(currentUser)); } catch(e){}
+    startSession({id: user.id, username: user.username, role: user.role}, true);
     // Clean URL
     window.history.replaceState({}, '', window.location.pathname);
     showApp();
@@ -3635,8 +3726,8 @@ async function submitRegister() {
 
 function logout() {
   if(!confirm('Sign out?')) return;
-  currentUser = null;
-  try { localStorage.removeItem('ule-session'); } catch(e){}
+  if(_sessTok){ sbRpc('app_logout', {}).catch(()=>{}); }
+  clearSession();
   document.getElementById('user-badge').style.display = 'none';
   document.getElementById('admin-btn').style.display = 'none';
   releases = []; jobs = []; jobItems = {}; currentJobId = null;
@@ -3646,6 +3737,7 @@ function logout() {
 // ─── Admin panel ──────────────────────────────────────────────────────────────
 async function openAdminPanel() {
   if(!can('manageUsers')){ toast('You do not have access to the admin panel.'); return; }
+  await securityCheck();
   activeModal = {type:'admin'};
   document.getElementById('modal-title').textContent = '⚙ Admin Panel';
   document.getElementById('modal-body').innerHTML = '<div class="empty-state"><span class="spinner"></span> Loading...</div>';
@@ -3710,7 +3802,15 @@ async function openAdminPanel() {
       (staffHtml||'<p style="font-size:12px;color:var(--text3);margin:0 0 .5rem">No staff accounts yet.</p>')+
       sectionHead('👤 Customers',custCount,'1.3rem')+
       (renderRoleGroup('customer')||'<p style="font-size:12px;color:var(--text3);margin:0 0 .5rem">No customer accounts yet.</p>');
+    const secMsg = {ok:['var(--green)','var(--green-bg)','Secure sign-in active — the database recognizes your session.'],
+      no_token:['var(--red)','var(--red-bg)','Security check FAILED — your sign-in token is not reaching the database. Do not run the lockdown step yet.'],
+      not_installed:['var(--amber)','var(--amber-bg)','Database security update not installed yet (Stage 1).'],
+      legacy:['var(--amber)','var(--amber-bg)','You signed in before the security update — sign out and back in to use secure sign-in.'],
+      expired:['var(--amber)','var(--amber-bg)','Session expired.'],
+      error:['var(--amber)','var(--amber-bg)','Security check could not run (network). Try again.'],
+      unknown:['var(--amber)','var(--amber-bg)','Security check still running — reopen this panel in a few seconds.']}[_secStatus] || [];
     document.getElementById('modal-body').innerHTML = `
+      <div id="sec-status" style="border-radius:9px;padding:.6rem .8rem;margin-bottom:1rem;font-size:12.5px;font-weight:600;color:${secMsg[0]};background:${secMsg[1]}">${secMsg[2]||''}</div>
       <div class="sec-label">Team &amp; clients (${users.length})</div>
       ${usersHtml}
 
@@ -3834,7 +3934,8 @@ async function resetUserPassword(userId, username) {
   if(pw === null) return; // cancelled
   if(pw.length < 6) { alert('Password must be at least 6 characters.'); return; }
   try {
-    await sbPatch('users', userId, {password_hash: hashPassword(pw.toLowerCase())});
+    try { await sbRpc('app_admin_set_password', {p_user: userId, p_password: pw}); }
+    catch(e){ if(rpcMissing(e)) await sbPatch('users', userId, {password_hash: hashPassword(pw.toLowerCase())}); else throw (e.message||e); }
     const self = (currentUser && userId === currentUser.id) ? ' (your own login)' : '';
     toast(`✓ Password reset for ${username}`);
     alert(`Password for "${username}" has been reset${self}.\n\nNew password: ${pw}\n\nShare it with them securely — it is not stored in readable form.`);
@@ -3856,10 +3957,11 @@ function bootAuth() {
   // Check for a password-reset token in URL
   const resetTok = new URLSearchParams(window.location.search).get('reset');
   if(resetTok) {
-    pendingResetToken = resetTok;
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('reset-screen').classList.remove('hidden');
-    document.getElementById('layout-wrap').style.cssText = 'display:none;flex:1;';
+    // Emailed reset links are retired — admins reset passwords from the Admin panel
+    window.history.replaceState({}, '', window.location.pathname);
+    showLoginScreen();
+    const le=document.getElementById('login-error');
+    if(le){ le.textContent='Password reset links are no longer used. Please contact your ULE Group representative to reset your password.'; le.style.cssText='display:block'; }
     return;
   }
   // Check for invite token in URL
@@ -3874,9 +3976,18 @@ function bootAuth() {
   try {
     const saved = localStorage.getItem('ule-session');
     if(saved) {
-      currentUser = JSON.parse(saved);
-      showApp();
-      loadAll();
+      const s = JSON.parse(saved);
+      if(s.token){                       // secure session
+        startSession(s); showApp(); loadAll(); securityCheck(); return;
+      }
+      if(s.legacy){                      // signed in before the database update was installed
+        currentUser = {id:s.id, username:s.username, role:s.role}; showApp(); loadAll();
+        // Once the database update exists, switch this browser to secure sign-in
+        sbRpc('app_whoami', {}).then(()=>upgradeSignOut()).catch(()=>{});
+        return;
+      }
+      // Saved sign-in from before the security upgrade → sign in once more
+      upgradeSignOut();
       return;
     }
   } catch(e) {}
