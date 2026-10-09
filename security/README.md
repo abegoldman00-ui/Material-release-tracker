@@ -43,6 +43,9 @@ to stop after.
 4. Customers see their rep on their job screen and on reports, plus a **Request a release** button.
    Staff see a **Requests** button (gold count = open requests). **Release…** opens the bulk-release form pre-filled;
    submitting it marks the request released. **Decline** lets you send the customer a short note.
+- Customers enter **who is requesting** (name required; phone/email optional, remembered on their device) and an optional release name/#.
+  Both carry onto the release and show in the release log, PDF reports and Excel. Staff can also fill "Requested by" on any bulk release.
+- Re-run this file any time it's updated — it's safe to run more than once.
 - Until Stage 4 is run, these features stay hidden and everything else works as before.
 - Database rules: customers can only request on jobs assigned to them, can only cancel (not edit) their own open
   requests, and can't fake who sent a request. Only admins can change rep info.

@@ -480,6 +480,9 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
 .rq-lines li.more{color:var(--text3);font-size:11px}
 .rq-tbl{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}
 .rq-tbl td{padding:4px 0;border-top:1px dashed var(--border)}
+.rq-person{font-size:12.5px;margin-top:4px;color:var(--text)}
+.rq-person a{color:var(--blue);text-decoration:none}
+.req-by-chip{font-size:10.5px;font-weight:600;color:#6b4e00;background:#fff4d6;border:1px solid #f5d77a;border-radius:99px;padding:1px 8px}
 .rq-note{font-size:12px;color:var(--text2);margin-top:8px;font-style:italic}
 .rq-reply{font-size:12px;margin-top:8px;background:var(--blue-bg);color:var(--blue);border-radius:8px;padding:6px 9px}
 .rq-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
@@ -1556,7 +1559,7 @@ function renderLog(){
       const r = items[0];
       rowNum++;
       rendered.push(`<tr>
-        <td class="mobile-title" id="relhead-${gid}" title="${esc(r.item_id)}"><span style="color:var(--text3);font-size:10px;margin-right:5px">${rowNum}</span>${esc(r.item_id)} ${pencil}</td>
+        <td class="mobile-title" id="relhead-${gid}" title="${esc(r.item_id)}"><span style="color:var(--text3);font-size:10px;margin-right:5px">${rowNum}</span>${esc(r.item_id)} ${pencil}${requesterText(r)?`<div style="font-size:10.5px;color:var(--text3);margin-top:2px">Requested by ${esc(requesterText(r))}</div>`:''}</td>
         <td data-label="Category"><span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 6px">${esc(catShort(r.category))}</span></td>
         <td data-label="Qty" style="font-weight:600">${(parseInt(r.qty)||0).toLocaleString()}</td>
         <td data-label="Release date" style="font-family:'DM Mono',monospace;font-size:11px">${r.release_date||'—'}</td>
@@ -1585,6 +1588,7 @@ function renderLog(){
         <div id="relhead-${gid}" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <span style="font-size:12.5px;font-weight:700;color:var(--blue);display:inline-flex;align-items:center;gap:6px"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>${label}</span>${pencil}
           <span style="font-size:11px;color:var(--text2)">${items.length} item${items.length!==1?'s':''} · ${totalQty.toLocaleString()} units${r0.release_date?' · '+r0.release_date:''}${(r0.supplier&&!isCustomer())?' · '+esc(r0.supplier):''}${r0.status?' · '+r0.status:''}</span>
+          ${requesterText(r0)?`<span class="req-by-chip" title="Requested by">Requested by ${esc(requesterText(r0))}</span>`:''}
           ${(r0.logged_by_username&&!isCustomer())?`<span style="background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">${esc(r0.logged_by_username)}</span>`:''}
           ${can('release')?`<div style="margin-left:auto;display:flex;gap:4px">
             <button class="btn" style="height:24px;padding:0 9px;font-size:11px;color:var(--text2)" onclick="ackFromGroup('${gid}')" title="Order acknowledgement">Ack</button>
@@ -1745,8 +1749,8 @@ async function addItemToBulk(bulkId, itemId){
   const release_name = first.release_name||null;
   try{
     let row;
-    try{ row = await sbPost('releases',{...base,release_name}); }
-    catch(err){ row = await sbPost('releases',base); } // release_name column may not exist yet
+    try{ row = await sbPost('releases',{...base,release_name,...reqFieldsFrom(first)}); }
+    catch(err){ try{ row = await sbPost('releases',{...base,release_name}); } catch(e2){ row = await sbPost('releases',base); } } // newer columns may not exist yet
     releases.push(Array.isArray(row)?row[0]:row);
     refreshAll();
     logActivity('bulk_edited',`added ${item.desc} to a bulk release`).then(loadActivity);
@@ -2779,6 +2783,11 @@ function openBulkRelease(){
     <p style="font-size:12px;color:var(--text2);margin-bottom:.9rem">Set the release details once, then add all items delivered in this shipment.</p>
     <div class="form-row"><label>Release name / #</label><input type="text" id="br-name" placeholder="e.g. Release #3 · Truck 4"></div>
     <div class="form-grid">
+      <div class="form-row"><label>Requested by (optional)</label><input type="text" id="br-rq-name" placeholder="e.g. Mike Russo"></div>
+      <div class="form-row"><label>Requester phone</label><input type="tel" id="br-rq-phone" placeholder="e.g. 201-555-0123"></div>
+    </div>
+    <div class="form-row"><label>Requester email</label><input type="email" id="br-rq-email" placeholder="e.g. mike@contractor.com"></div>
+    <div class="form-grid">
       <div class="form-row"><label>Release date</label><input type="date" id="br-date" value="${new Date().toISOString().slice(0,10)}"></div>
       <div class="form-row"><label>Need-by / delivery date</label><input type="date" id="br-needby"></div>
     </div>
@@ -2887,6 +2896,8 @@ async function submitBulkRelease(){
   const status = document.getElementById('br-status').value;
   const notes = document.getElementById('br-notes').value||null;
   const release_name = (document.getElementById('br-name').value||'').trim()||null;
+  const rqv=id=>((document.getElementById(id)||{}).value||'').trim()||null;
+  const reqBy=reqFieldsFrom({requested_by_name:rqv('br-rq-name'),requested_by_phone:rqv('br-rq-phone'),requested_by_email:rqv('br-rq-email')});
   setBtnLoading('br-submit-btn',true,'Submitting...');
   try{
     // Generate a shared bulk_id for all items in this release
@@ -2895,13 +2906,18 @@ async function submitBulkRelease(){
       job_id:currentJobId, item_id:item.itemId, category:item.cat,
       qty:parseInt(item.qty)||0, release_date:date, need_by:needby,
       supplier, status, notes, release_name, bulk_id,
-      logged_by_username:currentUser?currentUser.username:null
+      logged_by_username:currentUser?currentUser.username:null, ...reqBy
     }));
     for(let i=0;i<rows.length;i+=50){
       const slice=rows.slice(i,i+50);
       let batch;
       try{ batch = await sbPost('releases',slice); }
-      catch(err){ batch = await sbPost('releases', slice.map(({release_name,...r})=>r)); } // release_name column may not exist yet
+      catch(err){
+        // requester columns (Stage 4) may not exist yet → keep the info in the notes instead
+        const keep=r=>{ const t=requesterText(r); const x=stripReq(r); if(t) x.notes=(x.notes?x.notes+' — ':'')+'Requested by '+t; return x; };
+        try{ batch = await sbPost('releases', slice.map(keep)); }
+        catch(err2){ batch = await sbPost('releases', slice.map(r=>{ const {release_name,...x}=keep(r); return x; })); } // release_name column may not exist yet
+      }
       const arr = Array.isArray(batch)?batch:[batch];
       releases.push(...arr);
     }
@@ -3431,9 +3447,9 @@ async function exportExcelStyled(ExcelJS){
 
   // ── Release Log ── (most recent first)
   const hdr3 = cust
-    ? ['Release','Item','Category','Qty Released','Release Date','Status']
-    : ['Release','Item','Category','Qty Released','Release Date','Need-By','Supplier','Status','Notes','Logged By'];
-  const w3 = cust ? [24,48,24,13,14,13] : [22,46,22,12,13,13,18,13,30,14];
+    ? ['Release','Item','Category','Qty Released','Release Date','Status','Requested By']
+    : ['Release','Item','Category','Qty Released','Release Date','Need-By','Supplier','Status','Notes','Logged By','Requested By'];
+  const w3 = cust ? [24,48,24,13,14,13,34] : [22,46,22,12,13,13,18,13,30,14,34];
   const s3=newSheet('Release Log',w3,true);
   banner(s3,hdr3.length,'Release Log');
   headerRow(s3,3,hdr3,[4]);
@@ -3441,8 +3457,8 @@ async function exportExcelStyled(ExcelJS){
   let r3=4;
   relSorted.forEach((x,idx)=>{
     const vals = cust
-      ? [x.release_name||'',x.item_id,x.category||'',parseInt(x.qty)||0,x.release_date||'',x.status||'']
-      : [x.release_name||'',x.item_id,x.category||'',parseInt(x.qty)||0,x.release_date||'',x.need_by||'',x.supplier||'',x.status||'',x.notes||'',x.logged_by_username||''];
+      ? [x.release_name||'',x.item_id,x.category||'',parseInt(x.qty)||0,x.release_date||'',x.status||'',requesterText(x)]
+      : [x.release_name||'',x.item_id,x.category||'',parseInt(x.qty)||0,x.release_date||'',x.need_by||'',x.supplier||'',x.status||'',x.notes||'',x.logged_by_username||'',requesterText(x)];
     const stCol = cust?6:8;
     vals.forEach((v,j)=>{ const c=s3.getCell(r3,j+1); c.value=v;
       bodyCell(c,{zebra:idx%2===1,fmt:j===3?'#,##0':null,align:{horizontal:j===3?'right':'left',wrapText:(!cust&&j===8)}});
@@ -3514,11 +3530,11 @@ function exportExcelPlain(){
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows2),'All Line Items');
 
   const rows3=[ cust
-    ? ['Release','Item','Category','Qty Released','Release Date','Status']
-    : ['Release','Item','Category','Qty Released','Release Date','Need-By','Supplier','Status','Notes','Logged By'] ];
+    ? ['Release','Item','Category','Qty Released','Release Date','Status','Requested By']
+    : ['Release','Item','Category','Qty Released','Release Date','Need-By','Supplier','Status','Notes','Logged By','Requested By'] ];
   for(const r of releases) rows3.push(cust
-    ? [r.release_name||'',r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.status||'']
-    : [r.release_name||'',r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.need_by||'',r.supplier||'',r.status||'',r.notes||'',r.logged_by_username||'']);
+    ? [r.release_name||'',r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.status||'',requesterText(r)]
+    : [r.release_name||'',r.item_id,r.category||'',parseInt(r.qty)||0,r.release_date||'',r.need_by||'',r.supplier||'',r.status||'',r.notes||'',r.logged_by_username||'',requesterText(r)]);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows3),'Release Log');
   XLSX.writeFile(wb,reportFileBase(job)+'.xlsx');
 }
@@ -3754,7 +3770,7 @@ function buildPdfHtml(opts, snapshot, rep){
       } else {
         for(const g of lg){
           const label = g.name ? esc(g.name) : (g.bulk ? 'Bulk release' : 'Single release');
-          rowsHtml += `<tr class="grp"><td colspan="${cols}">${label}<span class="gmeta"> · ${fmtDate(g.date)} · ${g.items.length} item${g.items.length!==1?'s':''} · ${g.total.toLocaleString()} units${(internal&&g.items[0].supplier)?' · '+esc(g.items[0].supplier):''}</span></td></tr>`;
+          rowsHtml += `<tr class="grp"><td colspan="${cols}">${label}<span class="gmeta"> · ${fmtDate(g.date)} · ${g.items.length} item${g.items.length!==1?'s':''} · ${g.total.toLocaleString()} units${(internal&&g.items[0].supplier)?' · '+esc(g.items[0].supplier):''}${requesterText(g.items[0])?' · requested by '+esc(requesterText(g.items[0])):''}</span></td></tr>`;
           for(const r of g.items){
             rowsHtml += `<tr>
               <td>${esc(r.item_id)}</td>
@@ -3874,6 +3890,10 @@ function buildPdfHtml(opts, snapshot, rep){
 
 // ─── File naming: "customer - job name - date" ──────────────────────────────
 function localISODate(d){ d=d||new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// "Name · phone · email" of the person who requested a release
+function requesterText(r){ if(!r) return ''; return [r.requested_by_name,r.requested_by_phone,r.requested_by_email].map(x=>(x||'').trim()).filter(Boolean).join(' · '); }
+function reqFieldsFrom(o){ const out={}; for(const k of ['requested_by_name','requested_by_phone','requested_by_email']) if(o&&o[k]) out[k]=o[k]; return out; }
+function stripReq(r){ const {requested_by_name,requested_by_phone,requested_by_email,...rest}=r; return rest; }
 function reportFileBase(job){
   const clean=s=>String(s||'').replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim();
   const parts=[];
@@ -3977,7 +3997,7 @@ function groupRequests(list){
   const m=new Map();
   for(const r of list){
     if(!m.has(r.request_group)) m.set(r.request_group,{id:r.request_group,job_id:r.job_id,status:r.status,created_at:r.created_at,
-      needed_by:r.needed_by,note:r.note,release_name:r.release_name,who:r.requested_by_username,company:r.company,staff_note:r.staff_note,
+      needed_by:r.needed_by,note:r.note,release_name:r.release_name,pname:r.requester_name,pphone:r.requester_phone,pemail:r.requester_email,who:r.requested_by_username,company:r.company,staff_note:r.staff_note,
       handled_by:r.handled_by_username,handled_at:r.handled_at,lines:[]});
     const g=m.get(r.request_group); g.lines.push(r);
     if(r.status==='open') g.status='open';
@@ -4017,7 +4037,13 @@ function openRequestModal(itemId){
     </div>
     <div id="rq-results" style="margin-bottom:.6rem"></div>
     <div id="rq-items"></div>
-    <div class="form-row" style="margin-top:.8rem"><label>Release name / # (optional)</label><input type="text" id="rq-name" maxlength="80" placeholder="e.g. Release #4 · Level 3 east"></div>
+    <div class="sec-label" style="margin-top:.9rem">Who is requesting</div>
+    <div class="form-grid">
+      <div class="form-row"><label>Name</label><input type="text" id="rq-pname" maxlength="80" placeholder="e.g. Mike Russo (foreman)"></div>
+      <div class="form-row"><label>Phone (optional)</label><input type="tel" id="rq-pphone" maxlength="40" placeholder="e.g. 201-555-0123"></div>
+    </div>
+    <div class="form-row"><label>Email (optional)</label><input type="email" id="rq-pemail" maxlength="120" placeholder="e.g. mike@contractor.com"></div>
+    <div class="form-row"><label>Release name / # (optional)</label><input type="text" id="rq-name" maxlength="80" placeholder="e.g. Release #4 · Level 3 east"></div>
     <div class="form-grid">
       <div class="form-row"><label>Needed on site by (optional)</label><input type="date" id="rq-date" min="${localISODate()}"></div>
       <div class="form-row"><label>Note for your rep (optional)</label><input type="text" id="rq-note" maxlength="300" placeholder="e.g. Deliver to Level 3, gate B"></div>
@@ -4027,6 +4053,8 @@ function openRequestModal(itemId){
       <button class="btn btn-blue" id="rq-submit" onclick="submitRequest()" disabled>Send request</button>
     </div>`;
   document.getElementById('overlay').classList.add('open');
+  try{ const p=JSON.parse(localStorage.getItem('ule-requester')||'null');   // remembered on this device
+    if(p){ const set=(id,v)=>{ const e=document.getElementById(id); if(e&&v) e.value=v; }; set('rq-pname',p.name); set('rq-pphone',p.phone); set('rq-pemail',p.email); } }catch(e){}
   if(itemId) addReqItem(itemId);
   else setTimeout(()=>{ const s=document.getElementById('rq-search'); if(s) s.focus(); },50);
 }
@@ -4074,14 +4102,21 @@ async function submitRequest(){
   const date=(document.getElementById('rq-date')||{}).value||null;
   const note=((document.getElementById('rq-note')||{}).value||'').trim()||null;
   const release_name=((document.getElementById('rq-name')||{}).value||'').trim()||null;
+  const gv=id=>((document.getElementById(id)||{}).value||'').trim()||null;
+  const requester_name=gv('rq-pname'), requester_phone=gv('rq-pphone'), requester_email=gv('rq-pemail');
+  if(!requester_name){ alert('Please enter the name of the person requesting this release.'); const e=document.getElementById('rq-pname'); if(e) e.focus(); return; }
+  try{ localStorage.setItem('ule-requester', JSON.stringify({name:requester_name,phone:requester_phone,email:requester_email})); }catch(e){}
   const gid='rq_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
-  const rows=reqItems.map(i=>({request_group:gid,job_id:currentJobId,item_id:i.itemId,category:i.cat,qty:parseInt(i.qty)||0,needed_by:date,note,release_name}));
+  const rows=reqItems.map(i=>({request_group:gid,job_id:currentJobId,item_id:i.itemId,category:i.cat,qty:parseInt(i.qty)||0,needed_by:date,note,release_name,requester_name,requester_phone,requester_email}));
   setBtnLoading('rq-submit',true,'Sending…');
   try{
     try{ await sbPost('release_requests',rows); }
-    catch(err){   // release_name column not added yet (older Stage 4): send without it, keep the name in the note
-      if(!/release_name/.test(String(err))) throw err;
-      await sbPost('release_requests', rows.map(({release_name,...r})=>({...r, note: release_name ? (release_name+(r.note?' — '+r.note:'')) : r.note})));
+    catch(err){   // newer columns not added yet (older Stage 4): send without them, keep the info in the note
+      if(!/release_name|requester_/.test(String(err))) throw err;
+      await sbPost('release_requests', rows.map(({release_name,requester_name,requester_phone,requester_email,...r})=>{
+        const extra=[release_name, 'Requested by '+[requester_name,requester_phone,requester_email].filter(Boolean).join(' · ')].filter(Boolean).join(' — ');
+        return {...r, note: extra+(r.note?' — '+r.note:'')};
+      }));
     }
     closeModal();
     toast('✓ Request sent to ULE Group');
@@ -4110,7 +4145,7 @@ function renderMyRequests(){
           <div class="rq-title">${g.release_name?esc(g.release_name)+' <span class="muted">· ':''}${g.lines.length} item${g.lines.length!==1?'s':''} · ${units.toLocaleString()} units${g.release_name?'</span>':''}</div>
           ${reqPill(g.status)}
         </div>
-        <div class="rq-meta">Requested ${esc(timeAgo(g.created_at))}${g.who?' by '+esc(g.who):''}${g.needed_by?' · needed by '+fmtShortDate(g.needed_by):''}</div>
+        <div class="rq-meta">Requested ${esc(timeAgo(g.created_at))}${(g.pname||g.who)?' by '+esc(g.pname||g.who):''}${g.pphone?' · '+esc(g.pphone):''}${g.needed_by?' · needed by '+fmtShortDate(g.needed_by):''}</div>
         <ul class="rq-lines">${g.lines.slice(0,4).map(l=>`<li><span>${esc(desc(l.item_id))}</span><b>${(parseInt(l.qty)||0).toLocaleString()}</b></li>`).join('')}${g.lines.length>4?`<li class="more">+ ${g.lines.length-4} more</li>`:''}</ul>
         ${g.note?`<div class="rq-note">“${esc(g.note)}”</div>`:''}
         ${g.staff_note?`<div class="rq-reply"><b>ULE Group:</b> ${esc(g.staff_note)}</div>`:''}
@@ -4147,7 +4182,8 @@ function renderInbox(recent){
         <div class="rq-title">${esc(g.company||g.who||'Customer')} <span class="muted">· ${esc(jobN(g.job_id))}${g.release_name?' · '+esc(g.release_name):''}</span></div>
         ${reqPill(g.status)}
       </div>
-      <div class="rq-meta">${g.who?esc(g.who)+' · ':''}${esc(timeAgo(g.created_at))}${g.needed_by?` · <b style="color:var(--text)">needed by ${fmtShortDate(g.needed_by)}</b>`:''}${!actionable&&g.handled_by?' · handled by '+esc(g.handled_by):''}</div>
+      ${g.pname?`<div class="rq-person"><b>${esc(g.pname)}</b>${g.pphone?` · <a href="${esc(telHref(g.pphone))}">${esc(g.pphone)}</a>`:''}${g.pemail?` · <a href="mailto:${esc(g.pemail)}">${esc(g.pemail)}</a>`:''}</div>`:''}
+      <div class="rq-meta">${g.who?'login '+esc(g.who)+' · ':''}${esc(timeAgo(g.created_at))}${g.needed_by?` · <b style="color:var(--text)">needed by ${fmtShortDate(g.needed_by)}</b>`:''}${!actionable&&g.handled_by?' · handled by '+esc(g.handled_by):''}</div>
       <table class="rq-tbl"><tbody>${g.lines.map(line).join('')}</tbody></table>
       ${g.note?`<div class="rq-note">“${esc(g.note)}”</div>`:''}
       ${g.staff_note?`<div class="rq-reply"><b>Reply:</b> ${esc(g.staff_note)}</div>`:''}
@@ -4180,6 +4216,7 @@ async function fulfillRequest(gid){
   set('br-needby', g.needed_by);
   set('br-name', g.release_name || ('Request · '+(g.company||g.who||'customer')));
   set('br-notes', g.note);
+  set('br-rq-name', g.pname); set('br-rq-phone', g.pphone); set('br-rq-email', g.pemail);
   _fulfillGroup=gid;
   const mb=document.getElementById('modal-body');
   mb.insertAdjacentHTML('afterbegin',`<div class="rq-fill-banner">Filling a request from <b>${esc(g.company||g.who||'customer')}</b>. Submitting this release marks the request as released.${missing.length?`<br><span style="color:var(--red)">Not on the BOM: ${missing.map(esc).join(', ')}</span>`:''}</div>`);

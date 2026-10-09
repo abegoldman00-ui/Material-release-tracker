@@ -1,10 +1,12 @@
 -- ════════════════════════════════════════════════════════════════════════════
 --  ULETrack — STAGE 4: customer features (rep contact info + release requests)
---  Run after Stages 1 and 3. Additive only: adds 3 columns and 1 new table.
+--  Run after Stages 1 and 3. Additive only: adds columns and 1 new table.
+--  Safe to run again (e.g. after an update to this file).
 --  No existing data is changed.
 --
 --  • users.rep_name / rep_phone / rep_email — the ULE rep shown to each
 --    customer login (set by an admin in the Admin panel).
+--  • releases.requested_by_name / _phone / _email — who asked for a release.
 --  • release_requests — customers ask for material from their job; staff see
 --    them in a Requests inbox and turn them into releases.
 --
@@ -46,6 +48,14 @@ create table if not exists public.release_requests (
 );
 -- customer's own release name / number (added 2026-10-09; safe to re-run)
 alter table public.release_requests add column if not exists release_name text;
+-- who at the customer asked for it (added 2026-10-09; safe to re-run)
+alter table public.release_requests add column if not exists requester_name  text;
+alter table public.release_requests add column if not exists requester_phone text;
+alter table public.release_requests add column if not exists requester_email text;
+-- ...and it stays on the release itself
+alter table public.releases add column if not exists requested_by_name  text;
+alter table public.releases add column if not exists requested_by_phone text;
+alter table public.releases add column if not exists requested_by_email text;
 create index if not exists release_requests_job_status on public.release_requests(job_id, status);
 alter table public.release_requests enable row level security;
 grant select, insert, update, delete on public.release_requests to anon, authenticated;
