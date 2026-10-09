@@ -3977,7 +3977,7 @@ function groupRequests(list){
   const m=new Map();
   for(const r of list){
     if(!m.has(r.request_group)) m.set(r.request_group,{id:r.request_group,job_id:r.job_id,status:r.status,created_at:r.created_at,
-      needed_by:r.needed_by,note:r.note,who:r.requested_by_username,company:r.company,staff_note:r.staff_note,
+      needed_by:r.needed_by,note:r.note,release_name:r.release_name,who:r.requested_by_username,company:r.company,staff_note:r.staff_note,
       handled_by:r.handled_by_username,handled_at:r.handled_at,lines:[]});
     const g=m.get(r.request_group); g.lines.push(r);
     if(r.status==='open') g.status='open';
@@ -4017,7 +4017,8 @@ function openRequestModal(itemId){
     </div>
     <div id="rq-results" style="margin-bottom:.6rem"></div>
     <div id="rq-items"></div>
-    <div class="form-grid" style="margin-top:.8rem">
+    <div class="form-row" style="margin-top:.8rem"><label>Release name / # (optional)</label><input type="text" id="rq-name" maxlength="80" placeholder="e.g. Release #4 · Level 3 east"></div>
+    <div class="form-grid">
       <div class="form-row"><label>Needed on site by (optional)</label><input type="date" id="rq-date" min="${localISODate()}"></div>
       <div class="form-row"><label>Note for your rep (optional)</label><input type="text" id="rq-note" maxlength="300" placeholder="e.g. Deliver to Level 3, gate B"></div>
     </div>
@@ -4072,11 +4073,16 @@ async function submitRequest(){
   if(bad){ alert(`Enter a quantity for "${bad.desc}".`); return; }
   const date=(document.getElementById('rq-date')||{}).value||null;
   const note=((document.getElementById('rq-note')||{}).value||'').trim()||null;
+  const release_name=((document.getElementById('rq-name')||{}).value||'').trim()||null;
   const gid='rq_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
-  const rows=reqItems.map(i=>({request_group:gid,job_id:currentJobId,item_id:i.itemId,category:i.cat,qty:parseInt(i.qty)||0,needed_by:date,note}));
+  const rows=reqItems.map(i=>({request_group:gid,job_id:currentJobId,item_id:i.itemId,category:i.cat,qty:parseInt(i.qty)||0,needed_by:date,note,release_name}));
   setBtnLoading('rq-submit',true,'Sending…');
   try{
-    await sbPost('release_requests',rows);
+    try{ await sbPost('release_requests',rows); }
+    catch(err){   // release_name column not added yet (older Stage 4): send without it, keep the name in the note
+      if(!/release_name/.test(String(err))) throw err;
+      await sbPost('release_requests', rows.map(({release_name,...r})=>({...r, note: release_name ? (release_name+(r.note?' — '+r.note:'')) : r.note})));
+    }
     closeModal();
     toast('✓ Request sent to ULE Group');
     await loadRequests();
@@ -4101,7 +4107,7 @@ function renderMyRequests(){
       const units=g.lines.reduce((s,l)=>s+(parseInt(l.qty)||0),0);
       return `<div class="rq-card">
         <div class="rq-top">
-          <div class="rq-title">${g.lines.length} item${g.lines.length!==1?'s':''} · ${units.toLocaleString()} units</div>
+          <div class="rq-title">${g.release_name?esc(g.release_name)+' <span class="muted">· ':''}${g.lines.length} item${g.lines.length!==1?'s':''} · ${units.toLocaleString()} units${g.release_name?'</span>':''}</div>
           ${reqPill(g.status)}
         </div>
         <div class="rq-meta">Requested ${esc(timeAgo(g.created_at))}${g.who?' by '+esc(g.who):''}${g.needed_by?' · needed by '+fmtShortDate(g.needed_by):''}</div>
@@ -4138,7 +4144,7 @@ function renderInbox(recent){
     const line=l=>{ const it=items.find(i=>i.item_name===l.item_id); return `<tr><td>${esc(l.item_id)}${it?'':' <span style="color:var(--red);font-size:10px">(not on BOM)</span>'}</td><td style="text-align:right;font-weight:600">${(parseInt(l.qty)||0).toLocaleString()}</td></tr>`; };
     return `<div class="rq-card">
       <div class="rq-top">
-        <div class="rq-title">${esc(g.company||g.who||'Customer')} <span class="muted">· ${esc(jobN(g.job_id))}</span></div>
+        <div class="rq-title">${esc(g.company||g.who||'Customer')} <span class="muted">· ${esc(jobN(g.job_id))}${g.release_name?' · '+esc(g.release_name):''}</span></div>
         ${reqPill(g.status)}
       </div>
       <div class="rq-meta">${g.who?esc(g.who)+' · ':''}${esc(timeAgo(g.created_at))}${g.needed_by?` · <b style="color:var(--text)">needed by ${fmtShortDate(g.needed_by)}</b>`:''}${!actionable&&g.handled_by?' · handled by '+esc(g.handled_by):''}</div>
@@ -4172,7 +4178,7 @@ async function fulfillRequest(gid){
   }).filter(Boolean);
   const set=(id,v)=>{ const e=document.getElementById(id); if(e&&v) e.value=v; };
   set('br-needby', g.needed_by);
-  set('br-name', 'Request · '+(g.company||g.who||'customer'));
+  set('br-name', g.release_name || ('Request · '+(g.company||g.who||'customer')));
   set('br-notes', g.note);
   _fulfillGroup=gid;
   const mb=document.getElementById('modal-body');

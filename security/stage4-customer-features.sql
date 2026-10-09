@@ -33,6 +33,7 @@ create table if not exists public.release_requests (
   qty                   integer not null check (qty > 0),
   needed_by             date,                          -- customer's "needed on site" date
   note                  text,
+  release_name          text,                          -- customer's release name / #
   status                text not null default 'open'
                         check (status in ('open','released','declined','cancelled')),
   requested_by          uuid references public.users(id) on delete set null,
@@ -43,6 +44,8 @@ create table if not exists public.release_requests (
   handled_at            timestamptz,
   created_at            timestamptz not null default now()
 );
+-- customer's own release name / number (added 2026-10-09; safe to re-run)
+alter table public.release_requests add column if not exists release_name text;
 create index if not exists release_requests_job_status on public.release_requests(job_id, status);
 alter table public.release_requests enable row level security;
 grant select, insert, update, delete on public.release_requests to anon, authenticated;
