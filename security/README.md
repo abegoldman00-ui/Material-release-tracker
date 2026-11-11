@@ -12,6 +12,8 @@ to stop after.
 | `stage3-UNDO.sql` | Emergency only | Puts "Allow all" back. Data untouched; sign-ins keep working. |
 | `stage1-UNDO.sql` | Emergency only | Removes the secure sign-in (run stage3-UNDO first and restore the old site). |
 | `stage4-customer-features.sql` | Any time after Step 3 | Adds rep contact info + customer release requests. Additive only. |
+| `stage5-notifications.sql` | After the notify function is deployed | Email notifications (release updates, request alerts, Friday summary). |
+| `stage5-UNDO.sql` | Emergency only | Turns email notifications off and removes them. |
 | `stage4-UNDO.sql` | Emergency only | Removes rep info + release requests (deletes saved requests). |
 
 ## Step 1 — install secure sign-in
@@ -49,6 +51,37 @@ to stop after.
 - Until Stage 4 is run, these features stay hidden and everything else works as before.
 - Database rules: customers can only request on jobs assigned to them, can only cancel (not edit) their own open
   requests, and can't fake who sent a request. Only admins can change rep info.
+
+## Step 5 — email notifications
+**A. Resend (sends the emails, free up to 3,000/month)**
+1. Sign up at resend.com.
+2. **Domains → Add domain → `uletrack.com`.** Resend shows 3–4 DNS records. Add them wherever uletrack.com's DNS is managed
+   (the company you bought the domain from). Wait until Resend says **Verified** (usually minutes).
+3. **API Keys → Create API key** (sending access). Copy it — it starts with `re_`.
+
+**B. Supabase Edge Function**
+1. Supabase → ULETrack project → **Edge Functions → Deploy a new function → Via editor**.
+2. Name it exactly **`notify`**. Replace the sample code with all of `supabase/functions/notify/index.ts`. **Deploy**.
+3. Open the function's settings and turn **off** "Enforce JWT verification" (the function checks its own secret instead). Save.
+4. **Edge Functions → Secrets → Add**: name `RESEND_API_KEY`, value = the key from A3.
+
+**C. Database**
+1. SQL Editor → paste all of `stage5-notifications.sql` → **Run**.
+2. Expect: `Stage 5 installed | 2 | 2`.
+
+**D. Check it**
+1. uletrack.com → **Admin → Send test** (top of the panel). The email should arrive within a minute.
+2. Every customer login needs an email to get anything: Admin → **✉ Email** on each customer. The panel flags logins with no email.
+3. Reps get request alerts automatically (from the rep email on the customer's login). Anyone else on the team can tick
+   **New request alerts** in Admin, or in their own 🔔 Email settings.
+
+**What goes out**
+- Release logged → customer contacts on the job (a bulk release = one email). Marked Delivered → one more email.
+- Customer request → the customer's rep + staff who opted in (admins if nobody is set up).
+- Fridays ~2pm ET → one summary per customer contact covering all their jobs with activity that week.
+- Customers choose All / Friday only / Off from the 🔔 button; every email links to those settings.
+- Pause everything: `update public.notify_config set value='true' where key='paused';` (set back to `false` to resume).
+- Customer emails never include supplier, need-by, notes or who logged a release.
 
 ## If something goes wrong
 Run `stage3-UNDO.sql`. Everything returns to how it worked before Step 3,

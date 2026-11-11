@@ -700,6 +700,20 @@ th{text-transform:none;letter-spacing:0;font-size:12.5px;font-weight:600;color:v
   .row-meter .meter{width:110px}
 }
 .login-split .login-logo img{width:108px;background:#fff;padding:8px 10px;border-radius:12px;box-shadow:0 1px 2px rgba(19,32,58,.08),0 6px 16px -8px rgba(19,32,58,.25)}
+
+.notify-btn:hover{background:var(--blue-bg)!important;color:var(--blue)!important}
+.notify-opt{display:flex;gap:11px;align-items:flex-start;padding:.75rem .85rem;border:1px solid var(--border);border-radius:12px;margin-bottom:.5rem;cursor:pointer;background:var(--surface)}
+.notify-opt:has(input:checked){border-color:var(--blue);background:var(--blue-bg)}
+.notify-opt input{margin-top:3px;accent-color:var(--blue)}
+.notify-opt b{display:block;font-size:14px}
+.notify-opt small{display:block;font-size:12.5px;color:var(--text2);margin-top:2px;line-height:1.4}
+.admin-notify{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin-top:5px;font-size:12px;color:var(--text2)}
+.admin-notify select{height:24px;font-size:11.5px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text);padding:0 5px;margin-left:4px}
+.admin-notify .chk{display:inline-flex;align-items:center;gap:5px}
+.admin-test-mail{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:.7rem .85rem;border:1px solid var(--border);border-radius:12px;margin-bottom:1rem;background:var(--surface2)}
+.admin-test-mail>div{flex:1 1 180px;font-size:13px}
+.admin-test-mail span{display:block;font-size:12px;color:var(--text3)}
+.admin-test-mail input{height:32px;border:1px solid var(--border2);border-radius:8px;padding:0 9px;font-size:13px;background:var(--surface);color:var(--text);min-width:200px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -832,6 +846,7 @@ th{text-transform:none;letter-spacing:0;font-size:12.5px;font-weight:600;color:v
         <div class="user-badge" id="user-badge" style="display:none">
           <div class="user-avatar" id="user-avatar">?</div>
           <div><div class="user-name" id="user-name-display">—</div><div class="user-role" id="user-role-display">—</div></div>
+          <button class="logout-btn notify-btn" onclick="openEmailSettings()" title="Email settings" aria-label="Email settings"><svg class="ic" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
           <button class="logout-btn" onclick="logout()" title="Sign out" aria-label="Sign out"><svg class="ic" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
         </div>
         <div class="theme-toggle-wrap">
@@ -1208,7 +1223,11 @@ async function loadAll(){
     renderSidebar();
 
     // Auto-select first job
-    if(jobs.length>0 && !currentJobId) await selectJob(jobs[0].id);
+    const _dl = takeDeepLink();
+    if(_dl.job && jobs.some(j=>j.id===_dl.job)) await selectJob(_dl.job);
+    else if(jobs.length>0 && !currentJobId) await selectJob(jobs[0].id);
+    if(_dl.settings==='email') setTimeout(openEmailSettings, 300);
+    else if(_dl.requests && !isCustomer()) setTimeout(openRequestsInbox, 300);
 
     startRealtime(); // begin instant updates (idempotent)
     loadRequests();   // release requests (badge for staff, list for customers)
@@ -4754,11 +4773,12 @@ async function openAdminPanel() {
   document.getElementById('modal-body').innerHTML = '<div class="empty-state"><span class="spinner"></span> Loading...</div>';
   document.getElementById('overlay').classList.add('open');
   try {
-    let users, repCols=true;
-    try{ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at,email,company,rep_name,rep_phone,rep_email'); }
+    let users, repCols=true, notifyCols=true;
+    try{ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at,email,company,rep_name,rep_phone,rep_email,notify_pref,notify_requests'); }
+    catch(eN){ notifyCols=false; try{ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at,email,company,rep_name,rep_phone,rep_email'); }
     catch(e0){ repCols=false; try{ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at,email,company'); }
     catch(e){ try{ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at,email'); }
-      catch(e2){ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at'); } } } // email/company/rep columns may not exist pre-migration
+      catch(e2){ users = await sbGet('users', 'order=created_at.asc&select=id,username,role,created_at'); } } } } // email/company/rep/notify columns may not exist pre-migration
     window._adminUsers = users;
     window._adminStaff = users.filter(u=>u.role!=='customer');
     const repBlock=(u)=>{
@@ -4800,7 +4820,13 @@ async function openAdminPanel() {
           <div class="user-avatar" style="width:28px;height:28px;font-size:12px">${u.username.slice(0,2).toUpperCase()}</div>
           <div class="admin-user-info">
             <div class="admin-user-name">${esc(u.username)} ${u.company?`<span style="font-size:10px;font-weight:600;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 8px;margin-left:4px;color:var(--text2)">🏢 ${esc(u.company)}</span>`:''} ${u.id===currentUser.id?'<span style="font-size:10px;color:var(--text3)">(you)</span>':''}</div>
-            <div class="admin-user-meta">Joined ${new Date(u.created_at).toLocaleDateString()} ${u.email?'· '+esc(u.email):'· <span style="color:var(--amber)">no email</span>'}</div>
+            <div class="admin-user-meta">Joined ${new Date(u.created_at).toLocaleDateString()} ${u.email?'· '+esc(u.email):'· <span style="color:var(--amber)">no email — gets no notifications</span>'}</div>
+            ${notifyCols?`<div class="admin-notify">
+              <label>Emails <select onchange="adminSetNotify('${u.id}',{notify_pref:this.value})">
+                ${[['all','All updates'],['weekly','Friday summary only'],['off','Off']].map(([v,l])=>`<option value="${v}"${(u.notify_pref||'all')===v?' selected':''}>${l}</option>`).join('')}
+              </select></label>
+              ${u.role!=='customer'?`<label class="chk"><input type="checkbox"${u.notify_requests?' checked':''} onchange="adminSetNotify('${u.id}',{notify_requests:this.checked})"> New request alerts</label>`:''}
+            </div>`:''}
           </div>
           ${u.id===currentUser.id
             ? `<span class="role-badge role-admin">${ROLE_LABELS[u.role]||u.role}</span>`
@@ -4851,6 +4877,11 @@ async function openAdminPanel() {
       unknown:['var(--amber)','var(--amber-bg)','Security check still running — reopen this panel in a few seconds.']}[_secStatus] || [];
     document.getElementById('modal-body').innerHTML = `
       <div id="sec-status" style="border-radius:9px;padding:.6rem .8rem;margin-bottom:1rem;font-size:12.5px;font-weight:600;color:${secMsg[0]};background:${secMsg[1]}">${secMsg[2]||''}</div>
+      ${notifyCols?`<div class="admin-test-mail">
+        <div><b>Email notifications</b><span>Send a test to check delivery.</span></div>
+        <input type="email" id="test-mail-to" value="${esc((users.find(x=>x.id===currentUser.id)||{}).email||'')}" placeholder="you@ulegroup.com">
+        <button class="btn" onclick="sendTestEmail()">Send test</button>
+      </div>`:''}
       <div class="sec-label">Team &amp; clients (${users.length})</div>
       ${usersHtml}
 
@@ -5059,6 +5090,62 @@ function toggleTheme(){
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 bootAuth();
 
+
+// ─── Email notifications (Stage 5) ───────────────────────────────────────────
+function takeDeepLink(){
+  let out={};
+  try{
+    const q=new URLSearchParams(location.search);
+    out={job:q.get('job'), requests:q.get('requests')==='1', settings:q.get('settings')};
+    if(out.job||out.requests||out.settings) history.replaceState(null,'',location.pathname);
+  }catch(e){}
+  return out;
+}
+async function openEmailSettings(){
+  if(!currentUser) return;
+  activeModal={type:'email-settings'};
+  document.getElementById('modal-title').textContent='Email settings';
+  document.getElementById('modal-body').innerHTML='<div class="empty-state"><span class="spinner"></span></div>';
+  document.getElementById('overlay').classList.add('open');
+  let me=null;
+  try{ me=(await sbGet('users',`id=eq.${currentUser.id}&select=email,notify_pref,notify_requests`))[0]; }catch(e){}
+  if(!activeModal || activeModal.type!=='email-settings') return;
+  const body=document.getElementById('modal-body');
+  if(!me || !('notify_pref' in me)){
+    body.innerHTML=`<p style="font-size:13.5px;color:var(--text2)">Email notifications aren't turned on for ULETrack yet.</p>
+      <div class="modal-actions"><button class="btn" onclick="closeModal()">Close</button></div>`;
+    return;
+  }
+  const staff=!isCustomer();
+  const opt=(v,t,d)=>`<label class="notify-opt"><input type="radio" name="np" value="${v}"${(me.notify_pref||'all')===v?' checked':''}><span><b>${t}</b><small>${d}</small></span></label>`;
+  body.innerHTML=`
+    <p style="font-size:13px;color:var(--text2);margin-bottom:.9rem">${me.email?`Emails go to <b style="color:var(--text)">${esc(me.email)}</b>.`:`There's no email on your account yet${isCustomer()?' — ask your ULE Group rep to add one':''}, so you won't get emails.`}</p>
+    ${staff?`<input type="hidden" name="np" value="${esc(me.notify_pref||'all')}" checked><p style="font-size:12.5px;color:var(--text3);margin-bottom:.6rem">Release updates and the Friday summary go to customer contacts. For your team, ULETrack can email you new requests.</p>`:`
+    ${opt('all','All updates','An email when material on your jobs is released or delivered, plus the Friday summary.')}
+    ${opt('weekly','Friday summary only','One email each Friday with the week\'s releases on your jobs.')}
+    ${opt('off','Off','No emails from ULETrack.')}`}
+    ${staff?`<label class="notify-opt" style="margin-top:.8rem"><input type="checkbox" id="np-req"${me.notify_requests?' checked':''}><span><b>New request alerts</b><small>Email me whenever a customer requests a release. Each customer's rep gets these automatically.</small></span></label>`:''}
+    <div class="modal-actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-blue" id="np-save" onclick="saveEmailSettings()">Save</button></div>`;
+}
+async function saveEmailSettings(){
+  const pref=(document.querySelector('input[name=np]:checked')||document.querySelector('input[name=np]')||{}).value||'all';
+  const reqEl=document.getElementById('np-req');
+  setBtnLoading('np-save',true,'Saving…');
+  try{
+    await sbRpc('app_set_my_notify',{p_pref:pref,p_requests:reqEl?reqEl.checked:null});
+    closeModal(); toast('✓ Email settings saved');
+  }catch(e){ alert('Could not save: '+(e.message||e)); setBtnLoading('np-save',false,'Save'); }
+}
+async function adminSetNotify(uid, body){
+  try{ await sbPatch('users',uid,body); toast('✓ Saved'); }
+  catch(e){ alert('Could not save: '+e); }
+}
+async function sendTestEmail(){
+  const to=((document.getElementById('test-mail-to')||{}).value||'').trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)){ alert('Enter an email address.'); return; }
+  try{ await sbRpc('app_notify_test',{p_to:to}); toast('Test email sent to '+to+' — check your inbox in a minute'); }
+  catch(e){ alert('Could not send: '+(e.message||e)); }
+}
 // ─── UI helpers (2026-11 upgrade) ───────────────────────────────────────────
 // Sidebar job search: shown once there are enough jobs to need it; re-applied
 // whenever the job list re-renders.
