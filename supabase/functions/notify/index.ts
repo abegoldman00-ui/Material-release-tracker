@@ -67,37 +67,37 @@ async function jobProgress(jobId: string) {
 function meter(pct: number) {
   const p = Math.max(0, Math.min(100, pct));
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:6px 0 2px"><tr>
-    <td style="height:10px;width:${p}%;background:#f5b301;border-radius:3px 0 0 3px;font-size:0;line-height:0">&nbsp;</td>
-    <td style="height:10px;width:${100 - p}%;background:#e5eaf1;border-radius:0 3px 3px 0;font-size:0;line-height:0">&nbsp;</td></tr></table>`;
+    <td style="height:10px;width:${p}%;background:#FBCA0F;border-radius:3px 0 0 3px;font-size:0;line-height:0">&nbsp;</td>
+    <td style="height:10px;width:${100 - p}%;background:#e3e3e3;border-radius:0 3px 3px 0;font-size:0;line-height:0">&nbsp;</td></tr></table>`;
 }
 function layout(opts: { preheader: string; heading: string; sub?: string; body: string; cta?: { label: string; url: string }; footerNote?: string }) {
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(opts.heading)}</title></head>
-<body style="margin:0;padding:0;background:#f3f5f8;font-family:Arial,Helvetica,sans-serif;color:#13203a">
+<body style="margin:0;padding:0;background:#f5f6f8;font-family:Helvetica,Arial,sans-serif;color:#3B3A3A">
 <span style="display:none!important;opacity:0;color:transparent;max-height:0;overflow:hidden">${esc(opts.preheader)}</span>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f5f8;padding:24px 12px"><tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e2e7ee">
-  <tr><td style="background:#0f2240;padding:18px 24px">
-    <img src="${SITE}/logo-email.png" width="84" alt="ULE Group" style="display:inline-block;vertical-align:middle;background:#fff;border-radius:8px;padding:5px 7px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f6f8;padding:24px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e3e3e3">
+  <tr><td style="background:#0C4DA2;padding:18px 24px">
+    <img src="${SITE}/brand/logo-onblue.png" width="96" alt="ULE Group" style="display:inline-block;vertical-align:middle">
     <span style="color:#fff;font-size:16px;font-weight:bold;vertical-align:middle;margin-left:10px">ULETrack</span>
   </td></tr>
-  <tr><td style="height:4px;background:#f5b301;font-size:0;line-height:0">&nbsp;</td></tr>
+  <tr><td style="height:4px;background:#FBCA0F;font-size:0;line-height:0">&nbsp;</td></tr>
   <tr><td style="padding:26px 24px 8px">
-    <div style="font-size:21px;font-weight:bold;line-height:1.25;color:#13203a">${esc(opts.heading)}</div>
-    ${opts.sub ? `<div style="font-size:14px;color:#4a5871;margin-top:6px">${opts.sub}</div>` : ""}
+    <div style="font-size:21px;font-weight:bold;line-height:1.25;color:#3B3A3A">${esc(opts.heading)}</div>
+    ${opts.sub ? `<div style="font-size:14px;color:#626161;margin-top:6px">${opts.sub}</div>` : ""}
   </td></tr>
   <tr><td style="padding:10px 24px 8px;font-size:14px;line-height:1.5">${opts.body}</td></tr>
-  ${opts.cta ? `<tr><td style="padding:14px 24px 26px"><a href="${opts.cta.url}" style="display:inline-block;background:#1c56a5;color:#ffffff;text-decoration:none;font-weight:bold;font-size:14px;padding:12px 20px;border-radius:10px">${esc(opts.cta.label)}</a></td></tr>` : ""}
-  <tr><td style="padding:16px 24px 22px;border-top:1px solid #e2e7ee;font-size:12px;color:#7f8ca2;line-height:1.5">
+  ${opts.cta ? `<tr><td style="padding:14px 24px 26px"><a href="${opts.cta.url}" style="display:inline-block;background:#0C4DA2;color:#ffffff;text-decoration:none;font-weight:bold;font-size:14px;padding:12px 20px;border-radius:10px">${esc(opts.cta.label)}</a></td></tr>` : ""}
+  <tr><td style="padding:16px 24px 22px;border-top:1px solid #e3e3e3;font-size:12px;color:#8c8b8b;line-height:1.5">
     ${opts.footerNote ? opts.footerNote + "<br>" : ""}
-    ULE Group · Powered by Partnerships · <a href="${SITE}/?settings=email" style="color:#7f8ca2">Email settings</a>
+    ULE Group · Powered by Partnerships · <a href="${SITE}/?settings=email" style="color:#8c8b8b">Email settings</a>
   </td></tr>
 </table></td></tr></table></body></html>`;
 }
 const itemTable = (rows: string[][], heads: string[]) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;margin-top:6px">
-  <tr>${heads.map((h, i) => `<td style="padding:7px 6px;border-bottom:2px solid #13203a;font-weight:bold;${i ? "text-align:right" : ""}">${esc(h)}</td>`).join("")}</tr>
-  ${rows.map((r) => `<tr>${r.map((c, i) => `<td style="padding:7px 6px;border-bottom:1px solid #e2e7ee;${i ? "text-align:right;white-space:nowrap" : ""}">${c}</td>`).join("")}</tr>`).join("")}</table>`;
+  <tr>${heads.map((h, i) => `<td style="padding:7px 6px;border-bottom:2px solid #3B3A3A;font-weight:bold;${i ? "text-align:right" : ""}">${esc(h)}</td>`).join("")}</tr>
+  ${rows.map((r) => `<tr>${r.map((c, i) => `<td style="padding:7px 6px;border-bottom:1px solid #e3e3e3;${i ? "text-align:right;white-space:nowrap" : ""}">${c}</td>`).join("")}</tr>`).join("")}</table>`;
 const repLine = (u?: U) => u && (u.rep_name || u.rep_email || u.rep_phone)
-  ? `Questions? Your ULE Group rep: <b>${esc(u.rep_name ?? "")}</b>${u.rep_phone ? ` · ${esc(u.rep_phone)}` : ""}${u.rep_email ? ` · <a href="mailto:${esc(u.rep_email)}" style="color:#1c56a5">${esc(u.rep_email)}</a>` : ""}` : "";
+  ? `Questions? Your ULE Group rep: <b>${esc(u.rep_name ?? "")}</b>${u.rep_phone ? ` · ${esc(u.rep_phone)}` : ""}${u.rep_email ? ` · <a href="mailto:${esc(u.rep_email)}" style="color:#0C4DA2">${esc(u.rep_email)}</a>` : ""}` : "";
 
 // ── Resend ──
 type Mail = { to: string[]; subject: string; html: string; reply_to?: string };
@@ -129,9 +129,9 @@ async function buildReleaseMails(jobId: string, rowIds: string[], delivered: boo
   const reqBy = rels.find((r: any) => r.requested_by_name)?.requested_by_name;
   const body = `<div>${rels.length} item${rels.length === 1 ? "" : "s"} · ${n(units)} units${reqBy ? ` · requested by ${esc(reqBy)}` : ""}</div>
     ${itemTable(rels.slice(0, 25).map((r: any) => [esc(r.item_id), n(r.qty)]), ["Item", "Qty"])}
-    ${rels.length > 25 ? `<div style="color:#7f8ca2;font-size:12px;margin-top:6px">+ ${rels.length - 25} more in ULETrack</div>` : ""}
+    ${rels.length > 25 ? `<div style="color:#8c8b8b;font-size:12px;margin-top:6px">+ ${rels.length - 25} more in ULETrack</div>` : ""}
     <div style="margin-top:20px;font-weight:bold">${esc(job.name)} is ${prog.pct}% released</div>${meter(prog.pct)}
-    <div style="font-size:12px;color:#7f8ca2">${n(prog.released)} of ${n(prog.total)} units</div>`;
+    <div style="font-size:12px;color:#8c8b8b">${n(prog.released)} of ${n(prog.total)} units</div>`;
   return recips.map((u) => ({
     to: [u.email!],
     subject: `${job.name}: ${heading}`,
@@ -156,7 +156,7 @@ async function buildRequestMails(group: string): Promise<Mail[]> {
   const units = lines.reduce((s: number, l: any) => s + (parseInt(l.qty) || 0), 0);
   const contact = [r0.requester_phone, r0.requester_email].filter(Boolean).map(esc).join(" · ");
   const body = `<div><b>${esc(who)}</b>${company ? ` at ${esc(company)}` : ""} requested ${lines.length} item${lines.length === 1 ? "" : "s"} (${n(units)} units).</div>
-    ${contact ? `<div style="color:#4a5871;margin-top:2px">${contact}</div>` : ""}
+    ${contact ? `<div style="color:#626161;margin-top:2px">${contact}</div>` : ""}
     ${itemTable(lines.map((l: any) => [esc(l.item_id), n(l.qty)]), ["Item", "Qty"])}
     <div style="margin-top:14px">${r0.release_name ? `Release name: <b>${esc(r0.release_name)}</b><br>` : ""}${r0.needed_by ? `Needed on site by: <b>${fmtDate(r0.needed_by)}</b><br>` : ""}${r0.note ? `Note: “${esc(r0.note)}”` : ""}</div>`;
   return [{
@@ -189,10 +189,10 @@ async function buildWeekly(): Promise<Mail[]> {
       }
       const openN = new Set(open.map((o: any) => o.request_group)).size;
       sections.push(`<div style="margin:18px 0 6px;font-size:16px;font-weight:bold">${esc(job.name)}</div>
-        <div style="font-size:13px;color:#4a5871">${prog.pct}% released · ${n(prog.released)} of ${n(prog.total)} units${openN ? ` · ${openN} open request${openN === 1 ? "" : "s"}` : ""}</div>${meter(prog.pct)}
-        ${groups.size ? itemTable([...groups.values()].map((g) => [`${esc(g.name)} <span style="color:#7f8ca2">· ${fmtDate(g.date)}</span>`, `${g.items} item${g.items === 1 ? "" : "s"}`, n(g.units)]), ["Released this week", "Items", "Units"])
-          : `<div style="font-size:13px;color:#7f8ca2;margin-top:6px">No releases this week.</div>`}
-        <div style="margin-top:8px"><a href="${SITE}/?job=${enc(job.id)}" style="color:#1c56a5;font-size:13px">Open ${esc(job.name)}</a></div>`);
+        <div style="font-size:13px;color:#626161">${prog.pct}% released · ${n(prog.released)} of ${n(prog.total)} units${openN ? ` · ${openN} open request${openN === 1 ? "" : "s"}` : ""}</div>${meter(prog.pct)}
+        ${groups.size ? itemTable([...groups.values()].map((g) => [`${esc(g.name)} <span style="color:#8c8b8b">· ${fmtDate(g.date)}</span>`, `${g.items} item${g.items === 1 ? "" : "s"}`, n(g.units)]), ["Released this week", "Items", "Units"])
+          : `<div style="font-size:13px;color:#8c8b8b;margin-top:6px">No releases this week.</div>`}
+        <div style="margin-top:8px"><a href="${SITE}/?job=${enc(job.id)}" style="color:#0C4DA2;font-size:13px">Open ${esc(job.name)}</a></div>`);
     }
     if (!sections.length) continue;
     mails.push({
@@ -227,9 +227,9 @@ async function buildReplyMails(ref: string): Promise<Mail[]> {
     <div style="margin-top:8px">${released
       ? `ULE Group released the material you requested${r0.needed_by ? `, needed on site by <b>${fmtDate(r0.needed_by)}</b>` : ""}.`
       : `ULE Group couldn't fill this request as submitted.`}</div>
-    ${!released && r0.staff_note ? `<div style="margin-top:12px;padding:10px 12px;background:#fff6dc;border-left:3px solid #f5b301;border-radius:6px"><b>Note from ULE Group:</b> ${esc(r0.staff_note)}</div>` : ""}
+    ${!released && r0.staff_note ? `<div style="margin-top:12px;padding:10px 12px;background:#fff7d6;border-left:3px solid #FBCA0F;border-radius:6px"><b>Note from ULE Group:</b> ${esc(r0.staff_note)}</div>` : ""}
     ${itemTable(mine.map((l: any) => [esc(l.item_id), n(l.qty)]), ["Item", "Qty"])}
-    <div style="font-size:12px;color:#7f8ca2;margin-top:6px">${mine.length} item${mine.length === 1 ? "" : "s"} · ${n(units)} units${r0.handled_by_username ? ` · handled by ${esc(r0.handled_by_username)}` : ""}</div>
+    <div style="font-size:12px;color:#8c8b8b;margin-top:6px">${mine.length} item${mine.length === 1 ? "" : "s"} · ${n(units)} units${r0.handled_by_username ? ` · handled by ${esc(r0.handled_by_username)}` : ""}</div>
     ${!released ? `<div style="margin-top:14px">Reply to this email or call your rep to sort out next steps.</div>` : ""}`;
   return [{
     to, subject: `${job?.name ?? "Your job"}: ${heading}`,
