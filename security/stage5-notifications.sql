@@ -5,6 +5,7 @@
 --
 --  • Release updates  → customer contacts on the job (new release, or Delivered)
 --  • New requests     → the requester's ULE rep + staff who opted in
+--  • Request replies  → requester + their login when a request is released/declined
 --  • Friday summary   → customer contacts, one email per person (Fridays ~2pm ET)
 --
 --  How it works: saving a release/request drops a row in notify_outbox; every
@@ -78,6 +79,20 @@ end $$;
 drop trigger if exists trg_outbox_request on public.release_requests;
 create trigger trg_outbox_request after insert on public.release_requests
   for each row execute function public.app_outbox_request();
+
+-- Customer is told when their request is released or declined (added 2026-11-11)
+create or replace function public.app_outbox_request_reply()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if old.status = 'open' and new.status in ('released','declined') then
+    insert into public.notify_outbox(kind, job_id, ref, row_id)
+    values ('request_reply', new.job_id, new.request_group || ':' || new.status, new.id::text);
+  end if;
+  return new;
+end $$;
+drop trigger if exists trg_outbox_request_reply on public.release_requests;
+create trigger trg_outbox_request_reply after update of status on public.release_requests
+  for each row execute function public.app_outbox_request_reply();
 
 -- 4) Calling the function
 create or replace function public.app_notify_call(p_body jsonb)

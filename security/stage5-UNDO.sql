@@ -3,6 +3,8 @@ select cron.unschedule(jobid) from cron.job where jobname in ('uletrack-notify-o
 begin;
 drop trigger if exists trg_outbox_release on public.releases;
 drop trigger if exists trg_outbox_request on public.release_requests;
+drop trigger if exists trg_outbox_request_reply on public.release_requests;
+drop function if exists public.app_outbox_request_reply();
 drop function if exists public.app_outbox_release();
 drop function if exists public.app_outbox_request();
 drop function if exists public.app_notify_test(text);

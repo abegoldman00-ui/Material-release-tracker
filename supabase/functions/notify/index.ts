@@ -114,12 +114,12 @@ async function sendAll(mails: Mail[]) {
 }
 
 // ── Builders ──
-async function buildReleaseMails(jobId: string, rowIds: string[], delivered: boolean): Promise<Mail[]> {
+async function buildReleaseMails(jobId: string, rowIds: string[], delivered: boolean, skip: Set<string> = new Set()): Promise<Mail[]> {
   const [job] = await db(`jobs?id=eq.${enc(jobId)}&select=id,name,customer`);
   if (!job) return [];
   const rels = await db(`releases?id=in.${enc(inList(rowIds))}&select=item_id,qty,status,release_name,release_date,requested_by_name`);
   if (!rels.length) return [];
-  const recips = await customerRecipients(jobId, ["all"]);
+  const recips = (await customerRecipients(jobId, ["all"])).filter((u) => delivered || !skip.has(u.email!.trim().toLowerCase()));
   if (!recips.length) return [];
   const prog = await jobProgress(jobId);
   const name = rels.find((r: any) => r.release_name)?.release_name;
@@ -205,6 +205,41 @@ async function buildWeekly(): Promise<Mail[]> {
   return mails;
 }
 
+
+// Customer hears back when their request is released or declined
+async function buildReplyMails(ref: string): Promise<Mail[]> {
+  const [group, status] = [ref.slice(0, ref.lastIndexOf(":")), ref.slice(ref.lastIndexOf(":") + 1)];
+  const lines = await db(`release_requests?request_group=eq.${enc(group)}&select=*`);
+  if (!lines.length) return [];
+  const r0 = lines[0];
+  const [job] = await db(`jobs?id=eq.${enc(r0.job_id)}&select=id,name,customer`);
+  const login: U | undefined = r0.requested_by ? (await db(`users?id=eq.${enc(r0.requested_by)}&select=id,username,email,notify_pref,rep_name,rep_phone,rep_email`))[0] : undefined;
+  if (login?.notify_pref === "off") return [];
+  const to = uniqEmails([r0.requester_email, login?.email]);
+  if (!to.length) return [];
+  const released = status === "released";
+  const mine = lines.filter((l: any) => l.status === status);
+  const what = r0.release_name ? r0.release_name : "Your release request";
+  const heading = released ? `${what} was released` : `${what} was declined`;
+  const hello = r0.requester_name ? `Hi ${esc(String(r0.requester_name).split(" ")[0])},` : "Hello,";
+  const units = mine.reduce((s: number, l: any) => s + (parseInt(l.qty) || 0), 0);
+  const body = `<div>${hello}</div>
+    <div style="margin-top:8px">${released
+      ? `ULE Group released the material you requested${r0.needed_by ? `, needed on site by <b>${fmtDate(r0.needed_by)}</b>` : ""}.`
+      : `ULE Group couldn't fill this request as submitted.`}</div>
+    ${!released && r0.staff_note ? `<div style="margin-top:12px;padding:10px 12px;background:#fff6dc;border-left:3px solid #f5b301;border-radius:6px"><b>Note from ULE Group:</b> ${esc(r0.staff_note)}</div>` : ""}
+    ${itemTable(mine.map((l: any) => [esc(l.item_id), n(l.qty)]), ["Item", "Qty"])}
+    <div style="font-size:12px;color:#7f8ca2;margin-top:6px">${mine.length} item${mine.length === 1 ? "" : "s"} · ${n(units)} units${r0.handled_by_username ? ` · handled by ${esc(r0.handled_by_username)}` : ""}</div>
+    ${!released ? `<div style="margin-top:14px">Reply to this email or call your rep to sort out next steps.</div>` : ""}`;
+  return [{
+    to, subject: `${job?.name ?? "Your job"}: ${heading}`,
+    reply_to: validEmail(login?.rep_email) ? login!.rep_email : undefined,
+    html: layout({ preheader: released ? `Released: ${mine.length} item(s) on ${job?.name ?? ""}` : `Declined: ${r0.staff_note ?? "see details"}`,
+      heading, sub: `${esc(job?.name ?? r0.job_id)}${job?.customer ? ` · ${esc(job.customer)}` : ""}`, body,
+      cta: { label: "View in ULETrack", url: `${SITE}/?job=${enc(r0.job_id)}` }, footerNote: repLine(login) }),
+  }];
+}
+
 // ── Handlers ──
 async function runOutbox() {
   const cutoff = new Date(NOW().getTime() - 45000).toISOString();
@@ -212,13 +247,23 @@ async function runOutbox() {
   const groups = new Map<string, any[]>();
   for (const r of rows) { const k = `${r.kind}|${r.job_id}|${r.ref}`; (groups.get(k) ?? groups.set(k, []).get(k)!).push(r); }
   const report: string[] = [];
-  for (const [k, list] of groups) {
+  const toldByJob = new Map<string, Set<string>>();      // job → emails that just got a "request released" reply
+  const order = (k: string) => (k.startsWith("request_reply|") ? 0 : 1);
+  for (const [k, list] of [...groups].sort((a, b) => order(a[0]) - order(b[0]))) {
     const [kind, jobId] = k.split("|");
     let result: string, done = true;
     const attempts = Math.max(...list.map((r) => r.attempts ?? 0)) + 1;
     try {
-      const mails = kind === "request" ? await buildRequestMails(list[0].ref)
-        : await buildReleaseMails(jobId, list.map((r) => r.row_id), kind === "release_status");
+      let mails: Mail[];
+      if (kind === "request") mails = await buildRequestMails(list[0].ref);
+      else if (kind === "request_reply") {
+        mails = await buildReplyMails(list[0].ref);
+        if (list[0].ref.endsWith(":released")) {
+          const s = toldByJob.get(jobId) ?? new Set<string>();
+          mails.forEach((m) => m.to.forEach((e) => s.add(e.toLowerCase())));
+          toldByJob.set(jobId, s);
+        }
+      } else mails = await buildReleaseMails(jobId, list.map((r) => r.row_id), kind === "release_status", toldByJob.get(jobId));
       result = mails.length ? await sendAll(mails) : "no recipients";
     } catch (e) {
       result = `error (try ${attempts}): ${(e as Error).message}`.slice(0, 500);
